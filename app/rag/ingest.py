@@ -9,7 +9,14 @@ from dotenv import load_dotenv
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.tools import DuckDuckGoSearchRun
+from app.rag.retriever import _THREAD_METADATA,_get_retriever,_THREAD_RETRIEVERS
+from app.rag.vector_store import emb
 from langchain_community.vectorstores import FAISS
+from langchain_ollama import ChatOllama,OllamaEmbeddings
+
+
+
+embeddings  = OllamaEmbeddings(model="nomic-embed-text")
 
 
 def ingest_pdf(file_bytes: bytes, thread_id: str, filename: Optional[str] = None) -> dict:
