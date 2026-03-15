@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import os
-import sqlite3
 import tempfile
 from typing import Annotated, Any, Dict, Optional
+from app.memory.sqlite_memory import checkpointer
 
 _THREAD_RETRIEVERS: Dict[str, Any] = {}
 _THREAD_METADATA: Dict[str, dict] = {}
