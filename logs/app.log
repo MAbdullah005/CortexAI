@@ -1,0 +1,43 @@
+2026-03-18 05:46:17,355 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-03-18 05:46:18,895 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-03-18 05:46:20,950 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-03-18 05:47:11,047 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-03-18 05:47:12,311 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-03-18 05:47:13,533 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-03-18 05:47:13,585 | INFO | req:N/A | app.tools.tools_registry | 4 tools loaded
+2026-03-18 05:47:22,810 | INFO | req:N/A | app.graph.planner_node | Planner received input: give me 2 + 2
+2026-03-18 05:47:22,813 | ERROR | req:N/A | app.graph.planner_node | Planner error: '\n  "action"'
+2026-03-18 05:53:37,337 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-03-18 05:53:38,438 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-03-18 05:53:39,590 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-03-18 05:53:39,629 | INFO | req:N/A | app.tools.tools_registry | 4 tools loaded
+2026-03-18 05:53:57,109 | INFO | req:N/A | app.graph.planner_node | Planner received input: give me 2+1
+2026-03-18 05:53:57,110 | ERROR | req:N/A | app.graph.planner_node | Planner error: '\n  "action"'
+2026-03-18 08:25:41,219 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-03-18 08:25:43,067 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-03-18 08:25:46,352 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-03-18 08:25:46,560 | INFO | req:N/A | app.tools.tools_registry | 4 tools loaded
+2026-03-18 08:25:55,941 | INFO | req:N/A | app.graph.planner_node | Planner received input: how are you
+2026-03-18 08:25:55,947 | ERROR | req:N/A | app.graph.planner_node | Planner error: '\n  "action"'
+2026-03-18 08:26:13,548 | INFO | req:N/A | app.graph.planner_node | Planner received input: ok give me stock price of apple
+2026-03-18 08:26:13,560 | ERROR | req:N/A | app.graph.planner_node | Planner error: '\n  "action"'
+2026-03-18 09:04:06,301 | INFO | req:N/A | app.graph.planner_node | Planner received input: how are you
+2026-03-18 09:04:06,304 | ERROR | req:N/A | app.graph.planner_node | Planner error: '\n  "action"'
+2026-03-18 09:05:46,162 | INFO | req:N/A | app.graph.planner_node | Planner received input: how a
+2026-03-18 09:05:46,163 | ERROR | req:N/A | app.graph.planner_node | Planner error: '\n  "action"'
+2026-03-18 09:06:37,638 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-03-18 09:06:40,028 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-03-18 09:06:44,005 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-03-18 09:06:44,141 | INFO | req:N/A | app.tools.tools_registry | 5 tools loaded
+2026-03-18 09:06:52,238 | INFO | req:N/A | app.graph.planner_node | Planner received input: how are yu
+2026-03-18 09:06:52,240 | ERROR | req:N/A | app.graph.planner_node | Planner error: '\n  "action"'
+2026-03-18 09:06:57,404 | INFO | req:N/A | app.graph.planner_node | Planner received input: how are s
+2026-03-18 09:06:57,405 | ERROR | req:N/A | app.graph.planner_node | Planner error: '\n  "action"'
+2026-03-18 09:07:33,905 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-03-18 09:07:35,956 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-03-18 09:07:38,283 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-03-18 09:07:38,352 | INFO | req:N/A | app.tools.tools_registry | 5 tools loaded
+2026-03-18 09:07:44,027 | INFO | req:N/A | app.graph.planner_node | Planner received input: how are yu
+2026-03-18 09:07:44,032 | ERROR | req:N/A | app.graph.planner_node | Planner error: '\n  "action"'
+2026-03-18 09:08:32,372 | INFO | req:N/A | app.graph.planner_node | Planner received input: give me 2+4
+2026-03-18 09:08:32,379 | ERROR | req:N/A | app.graph.planner_node | Planner error: '\n  "action"'
