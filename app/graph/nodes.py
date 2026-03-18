@@ -2,17 +2,16 @@ from app.tools.python_executor import python_executor
 from __future__ import annotations
 
 
-from dotenv import load_dotenv
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.document_loaders import PyPDFLoader
 from app.graph.state import ChatState
-from langchain_ollama import ChatOllama,OllamaEmbeddings
-from app.tools import search_tool,rag_tool,stock_tool,calculator_tool
-from langchain_core.messages import BaseMessage, SystemMessage
+from app.llm.llm_config import llm
+from app.tools.python_executor import python_executor
+from app.tools.calculator_tool import calculator
+from app.tools.rag_tool import rag_tool
+from app.tools.search_tool import search_tool
+from app.tools.stock_tool import get_stock_price
+from langchain_core.messages import SystemMessage
 
-from langgraph.prebuilt import ToolNode, tools_condition
-import requests
-
+from langgraph.prebuilt import ToolNode
 
 
 def chat_node(state: ChatState, config=None):
@@ -35,8 +34,7 @@ def chat_node(state: ChatState, config=None):
     response = llm_with_tools.invoke(messages, config=config)
     return {"messages": [response]}
 
-tools = [search_tool, stock_tool, calculator_tool, rag_tool,python_executor]
-llm=ChatOllama(model='qwen2.5:7b',temperature=0.2)
+tools = [search_tool, get_stock_price, calculator, rag_tool,python_executor]
 
 llm_with_tools = llm.bind_tools(tools)
 
