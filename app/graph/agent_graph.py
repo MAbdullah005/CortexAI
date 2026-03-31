@@ -19,7 +19,9 @@ from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import add_messages
 from app.graph.state import ChatState
 from langchain_core.messages import BaseMessage
+from langgraph.prebuilt import ToolNode,tools_condition
 
+from app.graph.nodes import chat_node,tool_node
 from app.graph.planner_node import planner_node
 from app.graph.tool_executor_node import tool_executor_node
 from app.memory.sqlite_memory import checkpointer
@@ -58,24 +60,18 @@ def route_after_planner(state: ChatState):
 graph = StateGraph(ChatState)
 
 # Nodes
-graph.add_node("planner", planner_node)
-graph.add_node("tool_executor", tool_executor_node)
+graph.add_node("chat_node",chat_node)
+graph.add_node("tools",tool_node)
+#graph.add_node("tool_executor", tool_executor_node)
 
 # Entry
-graph.add_edge(START, "planner")
+graph.add_edge(START, "chat_node")
+graph.add_conditional_edges("chat_node",tools_condition)
 
 # Conditional routing
-graph.add_conditional_edges(
-    "planner",
-    route_after_planner,
-    {
-        "tool_executor": "tool_executor",
-        END: END,
-    },
-)
 
 # Loop back
-graph.add_edge("tool_executor", "planner")
+graph.add_edge("tools","chat_node")
 
 # Compile
 chatbot = graph.compile(checkpointer=checkpointer)

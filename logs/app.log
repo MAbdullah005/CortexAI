@@ -41,3 +41,27 @@
 2026-03-18 09:07:44,032 | ERROR | req:N/A | app.graph.planner_node | Planner error: '\n  "action"'
 2026-03-18 09:08:32,372 | INFO | req:N/A | app.graph.planner_node | Planner received input: give me 2+4
 2026-03-18 09:08:32,379 | ERROR | req:N/A | app.graph.planner_node | Planner error: '\n  "action"'
+2026-03-18 09:38:57,550 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-03-18 09:38:59,353 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-03-18 09:39:00,842 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-03-18 09:39:01,022 | INFO | req:N/A | app.tools.tools_registry | 5 tools loaded
+2026-03-18 09:44:42,335 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-03-18 09:44:44,192 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-03-18 09:44:46,112 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-03-18 09:44:46,285 | INFO | req:N/A | app.tools.tools_registry | 5 tools loaded
+2026-03-18 09:53:18,437 | INFO | req:N/A | app.tools.stock_tool | Stock tool called | symbol=AAPL
+2026-03-18 09:53:22,347 | INFO | req:N/A | app.tools.stock_tool | Stock data retrieved | AAPL price=254.2300
+2026-03-31 15:49:07,219 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-03-31 15:49:14,639 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-03-31 15:49:21,720 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-03-31 15:49:22,522 | INFO | req:N/A | app.tools.tools_registry | 5 tools loaded
+2026-03-31 16:51:21,003 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-03-31 16:51:23,359 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-03-31 16:51:25,790 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-03-31 16:51:26,069 | INFO | req:N/A | app.tools.tools_registry | 5 tools loaded
+2026-03-31 16:51:26,297 | INFO | req:N/A | app.memory.sqlite_memory | Retrieving all conversation threads
+2026-03-31 16:51:26,422 | INFO | req:N/A | app.memory.sqlite_memory | Found 1 threads
+2026-03-31 16:59:09,993 | INFO | req:N/A | app.tools.stock_tool | Stock tool called | symbol=ARAMCO
+2026-03-31 16:59:19,355 | WARNING | req:N/A | app.tools.stock_tool | No data returned for symbol ARAMCO
+2026-03-31 17:03:16,967 | INFO | req:N/A | app.tools.stock_tool | Stock tool called | symbol=SAAP.L
+2026-03-31 17:03:24,800 | WARNING | req:N/A | app.tools.stock_tool | No data returned for symbol SAAP.L

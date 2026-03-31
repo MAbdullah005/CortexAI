@@ -1,5 +1,5 @@
-from app.tools.python_executor import python_executor
 from __future__ import annotations
+from app.tools.python_executor import python_executor
 
 
 from app.graph.state import ChatState
@@ -32,6 +32,7 @@ def chat_node(state: ChatState, config=None):
 
     messages = [system_message, *state["messages"]]
     response = llm_with_tools.invoke(messages, config=config)
+    print("this is message by llm ",{"messages": [response]})
     return {"messages": [response]}
 
 tools = [search_tool, get_stock_price, calculator, rag_tool,python_executor]
