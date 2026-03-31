@@ -1,15 +1,21 @@
 import uuid
-
 import streamlit as st
+import os
+import sys
+from pathlib import Path
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
-from langgraph_backend_chatbot import (
-    chatbot,
-    ingest_pdf,
-    retrieve_all_threads,
-    thread_document_metadata,
-)
+# Graph
+from app.graph.agent_graph import chatbot
 
+# RAG
+from app.rag.retriever import  thread_document_metadata
+from app.rag.ingest import ingest_pdf
+
+# Memory / Threads
+from app.memory.sqlite_memory import retrieve_all_threads
 
 # =========================== Utilities ===========================
 def generate_thread_id():
@@ -117,11 +123,12 @@ if user_input:
         status_holder = {"box": None}
 
         def ai_only_stream():
-            for message_chunk, _ in chatbot.stream(
-                {"messages": [HumanMessage(content=user_input)]},
-                config=CONFIG,
-                stream_mode="messages",
-            ):
+            for event in chatbot.stream(
+              {"messages": [HumanMessage(content=user_input)]},
+              config=CONFIG,
+              stream_mode="messages",
+             ):
+                message_chunk = event[0]
                 if isinstance(message_chunk, ToolMessage):
                     tool_name = getattr(message_chunk, "name", "tool")
                     if status_holder["box"] is None:
