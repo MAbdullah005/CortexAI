@@ -4,6 +4,10 @@ SQLite Memory Store
 Handles persistent conversation memory for the LangGraph agent
 using SqliteSaver.
 """
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+
 
 import os
 import sqlite3
@@ -39,7 +43,7 @@ def retrieve_all_threads() -> List[str]:
 
     Returns
     -------
-    List[str]
+    List[str]get_thread_title_db
         List of thread IDs.
     """
 
@@ -47,20 +51,11 @@ def retrieve_all_threads() -> List[str]:
 
     try:
 
-        all_threads = set()
+      cursor = conn.cursor()
+      cursor.execute("SELECT thread_id FROM threads ORDER BY created_at DESC")
+      rows = cursor.fetchall()
 
-        for checkpoint in checkpointer.list(None):
-
-            thread_id = checkpoint.config.get("configurable", {}).get("thread_id")
-
-            if thread_id:
-                all_threads.add(thread_id)
-
-        threads = list(all_threads)
-
-        logger.info(f"Found {len(threads)} threads")
-
-        return threads
+      return [row[0] for row in rows]
 
     except Exception as e:
 
@@ -88,3 +83,57 @@ def thread_exists(thread_id: str) -> bool:
         logger.error(f"Thread existence check failed: {str(e)}")
 
         return False
+
+def init_thread_table():
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS threads (
+        thread_id TEXT PRIMARY KEY,
+        title TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+    conn.commit()
+
+
+init_thread_table()
+
+
+
+def get_thread_title_db(thread_id: str) -> str:
+    try:
+        cursor = conn.cursor()
+
+        cursor.execute("""
+        SELECT title FROM threads WHERE thread_id=?
+        """, (thread_id,))
+
+        row = cursor.fetchone()
+
+        if row and row[0]:
+            return row[0]
+
+        return f"Chat {thread_id[:6]}"
+
+    except Exception as e:
+        logger.error(f"Failed to get thread title: {str(e)}")
+        return f"Chat {thread_id[:6]}"
+
+
+def save_thread_title(thread_id: str, title: str):
+    try:
+        cursor = conn.cursor()
+
+        cursor.execute("""
+        INSERT INTO threads (thread_id, title)
+        VALUES (?, ?)
+        ON CONFLICT(thread_id)
+        DO UPDATE SET title=excluded.title
+        """, (thread_id, title))
+
+        conn.commit()
+
+    except Exception as e:
+        logger.error(f"Failed to save thread title: {str(e)}")
