@@ -1,35 +1,38 @@
-import uuid
-import streamlit as st
 import os
 import sys
-from pathlib import Path
+import uuid
+import json
+import streamlit as st
 
+# Fix import path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
-# Graph
+# Backend
 from app.graph.agent_graph import chatbot
-
-# RAG
-from app.rag.retriever import  thread_document_metadata
 from app.rag.ingest import ingest_pdf
-
-# Memory / Threads
+from app.llm.llm_config import llm
+from app.memory.thread_titles import set_thread_title
+from app.rag.retriever import thread_document_metadata
 from app.memory.sqlite_memory import retrieve_all_threads
+from app.memory.sqlite_memory import get_thread_title_db, save_thread_title
+from app.memory.thread_titles import get_thread_title
+
+from app.llm.title_generator import generate_chat_title
+
+
 
 # =========================== Utilities ===========================
+
 def generate_thread_id():
-    return uuid.uuid4()
+    return str(uuid.uuid4())
 
 
 def reset_chat():
     thread_id = generate_thread_id()
     st.session_state["thread_id"] = thread_id
-    add_thread(thread_id)
     st.session_state["message_history"] = []
-
-
-def add_thread(thread_id):
     if thread_id not in st.session_state["chat_threads"]:
         st.session_state["chat_threads"].append(thread_id)
 
@@ -40,6 +43,7 @@ def load_conversation(thread_id):
 
 
 # ======================= Session Initialization ===================
+
 if "message_history" not in st.session_state:
     st.session_state["message_history"] = []
 
@@ -52,118 +56,160 @@ if "chat_threads" not in st.session_state:
 if "ingested_docs" not in st.session_state:
     st.session_state["ingested_docs"] = {}
 
-add_thread(st.session_state["thread_id"])
-
-thread_key = str(st.session_state["thread_id"])
-thread_docs = st.session_state["ingested_docs"].setdefault(thread_key, {})
+thread_key = st.session_state["thread_id"]
 threads = st.session_state["chat_threads"][::-1]
+thread_docs = st.session_state["ingested_docs"].setdefault(thread_key, {})
+
 selected_thread = None
 
-# ============================ Sidebar ============================
-st.sidebar.title("LangGraph PDF Chatbot")
-st.sidebar.markdown(f"**Thread ID:** `{thread_key}`")
 
-if st.sidebar.button("New Chat", use_container_width=True):
+# ============================ Sidebar ============================
+
+st.sidebar.title("LangGraph Multi-Tool Chatbot")
+st.sidebar.markdown(f"**Thread ID:** `{thread_key[:8]}`")
+st.sidebar.write("Titles:", st.session_state.get("thread_titles", {}))
+#.....
+st.sidebar.write(st.session_state.get("thread_titles", {}))
+#....
+
+if st.sidebar.button("New Chat"):
     reset_chat()
     st.rerun()
 
-if thread_docs:
-    latest_doc = list(thread_docs.values())[-1]
-    st.sidebar.success(
-        f"Using `{latest_doc.get('filename')}` "
-        f"({latest_doc.get('chunks')} chunks from {latest_doc.get('documents')} pages)"
-    )
-else:
-    st.sidebar.info("No PDF indexed yet.")
+if st.sidebar.button("Clear Conversation"):
+    st.session_state["message_history"] = []
+    st.rerun()
 
-uploaded_pdf = st.sidebar.file_uploader("Upload a PDF for this chat", type=["pdf"])
+
+
+st.sidebar.divider()
+
+# PDF Upload
+uploaded_pdf = st.sidebar.file_uploader("Upload PDF", type=["pdf"])
 if uploaded_pdf:
-    if uploaded_pdf.name in thread_docs:
-        st.sidebar.info(f"`{uploaded_pdf.name}` already processed for this chat.")
-    else:
-        with st.sidebar.status("Indexing PDF…", expanded=True) as status_box:
+    if uploaded_pdf.name not in thread_docs:
+        with st.sidebar.status("Indexing PDF..."):
             summary = ingest_pdf(
                 uploaded_pdf.getvalue(),
                 thread_id=thread_key,
                 filename=uploaded_pdf.name,
             )
             thread_docs[uploaded_pdf.name] = summary
-            status_box.update(label="✅ PDF indexed", state="complete", expanded=False)
+    else:
+        st.sidebar.info("PDF already indexed.")
 
-st.sidebar.subheader("Past conversations")
-if not threads:
-    st.sidebar.write("No past conversations yet.")
-else:
-    for thread_id in threads:
-        if st.sidebar.button(str(thread_id), key=f"side-thread-{thread_id}"):
-            selected_thread = thread_id
 
-# ============================ Main Layout ========================
+
+# Show document info
+if thread_docs:
+    latest_doc = list(thread_docs.values())[-1]
+    st.sidebar.success(
+        f"{latest_doc.get('filename')} | "
+        f"{latest_doc.get('chunks')} chunks | "
+        f"{latest_doc.get('documents')} pages"
+    )
+
+st.sidebar.divider()
+
+
+# Past Conversations
+st.sidebar.subheader("Past Conversations")
+
+for thread_id in threads:
+    title = get_thread_title_db(thread_id)
+
+    if st.sidebar.button(
+        title,
+        key=f"thread-{thread_id}"
+    ):
+        
+        selected_thread = thread_id
+
+
+# ============================ Main Chat ============================
+
 st.title("Multi Utility Chatbot")
 
-# Chat area
+# Show messages
 for message in st.session_state["message_history"]:
     with st.chat_message(message["role"]):
-        st.text(message["content"])
+        st.write(message["content"])
 
-user_input = st.chat_input("Ask about your document or use tools")
+user_input = st.chat_input("Ask something...")
+
+
 
 if user_input:
-    st.session_state["message_history"].append({"role": "user", "content": user_input})
+
+    current_title = get_thread_title_db(thread_key)
+
+    if current_title.startswith("Chat"):
+      try:
+          new_title = generate_chat_title(user_input)
+          save_thread_title(thread_key, new_title)
+          st.rerun()  # IMPORTANT
+      except:
+          pass
+
+
+    st.session_state["message_history"].append(
+        {"role": "user", "content": user_input}
+    )
+
     with st.chat_message("user"):
-        st.text(user_input)
+        st.write(user_input)
 
     CONFIG = {
         "configurable": {"thread_id": thread_key},
-        "metadata": {"thread_id": thread_key},
         "run_name": "chat_turn",
     }
+
+
 
     with st.chat_message("assistant"):
         status_holder = {"box": None}
 
-        def ai_only_stream():
+        def ai_stream():
             for event in chatbot.stream(
-              {"messages": [HumanMessage(content=user_input)]},
-              config=CONFIG,
-              stream_mode="messages",
-             ):
+                {"messages": [HumanMessage(content=user_input)]},
+                config=CONFIG,
+                stream_mode="messages",
+            ):
                 message_chunk = event[0]
+
                 if isinstance(message_chunk, ToolMessage):
                     tool_name = getattr(message_chunk, "name", "tool")
                     if status_holder["box"] is None:
                         status_holder["box"] = st.status(
-                            f"🔧 Using `{tool_name}` …", expanded=True
+                            f"Using tool: {tool_name}", expanded=True
                         )
-                    else:
-                        status_holder["box"].update(
-                            label=f"🔧 Using `{tool_name}` …",
-                            state="running",
-                            expanded=True,
-                        )
+                    st.code(message_chunk.content)
 
                 if isinstance(message_chunk, AIMessage):
                     yield message_chunk.content
 
-        ai_message = st.write_stream(ai_only_stream())
+        ai_message = st.write_stream(ai_stream())
 
-        if status_holder["box"] is not None:
-            status_holder["box"].update(
-                label="✅ Tool finished", state="complete", expanded=False
-            )
+        
+
+        if status_holder["box"]:
+            status_holder["box"].update(label="Tool finished", state="complete")
 
     st.session_state["message_history"].append(
         {"role": "assistant", "content": ai_message}
     )
 
+    # Show document metadata
     doc_meta = thread_document_metadata(thread_key)
     if doc_meta:
         st.caption(
-            f"Document indexed: {doc_meta.get('filename')} "
-            f"(chunks: {doc_meta.get('chunks')}, pages: {doc_meta.get('documents')})"
+            f"Source: {doc_meta.get('filename')} | "
+            f"Chunks: {doc_meta.get('chunks')} | "
+            f"Pages: {doc_meta.get('documents')}"
         )
 
-st.divider()
+
+# ============================ Thread Switch ============================
 
 if selected_thread:
     st.session_state["thread_id"] = selected_thread
@@ -173,6 +219,19 @@ if selected_thread:
     for msg in messages:
         role = "user" if isinstance(msg, HumanMessage) else "assistant"
         temp_messages.append({"role": role, "content": msg.content})
+
     st.session_state["message_history"] = temp_messages
-    st.session_state["ingested_docs"].setdefault(str(selected_thread), {})
     st.rerun()
+
+
+# ============================ Download Chat ============================
+
+st.divider()
+
+chat_json = json.dumps(st.session_state["message_history"], indent=2)
+st.download_button(
+    label="Download Chat History",
+    data=chat_json,
+    file_name="chat_history.json",
+    mime="application/json",
+)
