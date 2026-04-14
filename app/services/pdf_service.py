@@ -23,7 +23,7 @@ from app.config.settings import (
     RETRIEVAL_K,
 )
 
-from app.rag.retriever import _store_retriever, _THREAD_METADATA
+from app.rag.retriever import _THREAD_RETRIEVERS, _THREAD_METADATA
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -75,7 +75,7 @@ def process_pdf(file_path: str, thread_id: str) -> dict:
         )
 
         # Store retriever for thread
-        _store_retriever(thread_id, retriever)
+        _THREAD_RETRIEVERS(thread_id, retriever)
 
         # Save metadata
         _THREAD_METADATA[thread_id] = {
