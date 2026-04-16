@@ -23,7 +23,7 @@ from app.config.settings import (
     RETRIEVAL_K,
 )
 
-from app.rag.retriever import _THREAD_RETRIEVERS, _THREAD_METADATA
+from app.core.retriever import _THREAD_RETRIEVERS, _THREAD_METADATA
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)

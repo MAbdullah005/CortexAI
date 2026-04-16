@@ -137,3 +137,59 @@ def save_thread_title(thread_id: str, title: str):
 
     except Exception as e:
         logger.error(f"Failed to save thread title: {str(e)}")
+
+
+def init_thread_context_table():
+    cursor=conn.cursor()
+    
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS thread_context (
+        thread_id TEXT PRIMARY KEY,
+        youtube_url TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(thread_id) REFERENCES threads(thread_id)
+    )
+    """)
+
+    conn.commit()
+
+init_thread_context_table()
+
+
+def save_youtube_url(thread_id: str, youtube_url: str):
+    try:
+        cursor = conn.cursor()
+
+        cursor.execute("""
+        INSERT INTO thread_context (thread_id, youtube_url)
+        VALUES (?, ?)
+        ON CONFLICT(thread_id)
+        DO UPDATE SET youtube_url=excluded.youtube_url
+        """, (thread_id, youtube_url))
+
+        conn.commit()
+
+        logger.info(f"YouTube URL saved | thread={thread_id}")
+
+    except Exception as e:
+        logger.error(f"Failed to save YouTube URL: {str(e)}")
+
+    
+def get_youtube_url(thread_id: str) -> str:
+    try:
+        cursor = conn.cursor()
+
+        cursor.execute("""
+        SELECT youtube_url FROM thread_context WHERE thread_id=?
+        """, (thread_id,))
+
+        row = cursor.fetchone()
+
+        if row:
+            return row[0]
+
+        return None
+
+    except Exception as e:
+        logger.error(f"Failed to fetch YouTube URL: {str(e)}")
+        return None

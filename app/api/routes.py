@@ -2,6 +2,7 @@ from fastapi import APIRouter, UploadFile, File
 from fastapi.responses import StreamingResponse
 from typing import List
 import uuid
+from app.memory.sqlite_memory import save_youtube_url
 
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 
@@ -106,3 +107,35 @@ def generate_title(data: dict):
     save_thread_title(thread_id, title)
 
     return {"title": title}
+
+
+@router.post("/set_youtube")
+def set_youtube(data: dict):
+    thread_id = data.get("thread_id")
+    youtube_url = data.get("youtube_url")
+
+    if not thread_id or not youtube_url:
+        return {"error": "thread_id and youtube_url are required"}
+
+    # ✅ Save in DB
+    save_youtube_url(thread_id, youtube_url)
+
+    # ✅ Reset in-memory retriever cache (IMPORTANT)
+    try:
+        from app.core.thread_store import _THREAD_DATA
+
+        if thread_id in _THREAD_DATA:
+            _THREAD_DATA[thread_id]["youtube_retriever"] = None
+
+    except Exception:
+        pass  # safe fallback if not using cache
+
+    return {"status": "YouTube URL saved successfully"}
+
+@router.get("/get_youtube/{thread_id}")
+def get_youtube(thread_id: str):
+    from app.memory.sqlite_memory import get_youtube_url
+
+    url = get_youtube_url(thread_id)
+
+    return {"youtube_url": url}
