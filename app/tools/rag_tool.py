@@ -9,7 +9,7 @@ returns relevant context for the LLM to generate grounded responses.
 from typing import Optional, Dict, Any, List
 from langchain_core.tools import tool
 
-from app.rag.retriever import _get_retriever, _THREAD_METADATA
+from app.core.retriever import _get_retriever, _THREAD_METADATA
 from app.utils.logger import get_logger, log_latency
 
 logger = get_logger(__name__)

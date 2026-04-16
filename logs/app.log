@@ -277,3 +277,106 @@
 2026-04-14 01:16:21,169 | INFO | req:N/A | app.memory.sqlite_memory | Retrieving all conversation threads
 2026-04-14 01:27:16,900 | INFO | req:N/A | app.tools.search_tool | Search tool called | query='US and Iran tensions and conflicts from 2019 to present'
 2026-04-14 01:27:30,495 | INFO | req:N/A | app.tools.search_tool | Search completed successfully
+2026-04-14 16:42:21,897 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-04-14 16:42:24,399 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-04-14 16:42:27,609 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-04-14 16:47:22,739 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-04-14 16:47:24,449 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-04-14 16:47:26,057 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-04-14 17:05:40,349 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-04-14 17:05:41,890 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-04-14 17:07:53,250 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-04-14 17:07:54,894 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-04-14 17:07:56,357 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-04-14 18:48:16,465 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-04-14 18:48:18,787 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-04-14 18:48:21,317 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-04-14 18:50:17,036 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-04-14 18:50:18,766 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-04-14 18:50:20,194 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-04-14 18:56:27,555 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-04-14 18:56:29,669 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-04-14 18:56:31,723 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-04-14 18:58:13,733 | INFO | req:N/A | app.tools.tools_registry | 5 tools loaded
+2026-04-14 18:58:13,830 | INFO | req:N/A | app.memory.sqlite_memory | Retrieving all conversation threads
+2026-04-14 19:00:18,529 | INFO | req:N/A | app.memory.sqlite_memory | Retrieving all conversation threads
+2026-04-14 19:00:46,113 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-04-14 19:00:48,063 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-04-14 19:00:50,428 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-04-14 19:00:51,019 | INFO | req:N/A | app.tools.tools_registry | 5 tools loaded
+2026-04-14 19:01:17,631 | ERROR | req:N/A | app.memory.sqlite_memory | Failed to save YouTube URL: no such table: thread_context
+2026-04-14 19:45:48,087 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-04-14 19:45:49,813 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-04-14 19:45:51,809 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-04-14 19:45:52,444 | INFO | req:N/A | app.tools.tools_registry | 5 tools loaded
+2026-04-14 19:46:31,226 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-04-14 19:46:33,679 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-04-14 19:46:36,970 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-04-14 19:46:37,462 | INFO | req:N/A | app.tools.tools_registry | 5 tools loaded
+2026-04-14 19:49:00,865 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-04-14 19:49:05,044 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-04-14 19:49:09,222 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-04-14 19:50:32,795 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-04-14 19:50:34,571 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-04-14 19:50:36,481 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-04-14 19:50:36,790 | INFO | req:N/A | app.tools.tools_registry | 5 tools loaded
+2026-04-14 19:52:58,316 | INFO | req:N/A | app.memory.sqlite_memory | Retrieving all conversation threads
+2026-04-14 19:53:00,408 | ERROR | req:N/A | app.memory.sqlite_memory | Failed to fetch YouTube URL: no such table: thread_context
+2026-04-14 19:53:29,024 | ERROR | req:N/A | app.memory.sqlite_memory | Failed to save YouTube URL: no such table: thread_context
+2026-04-16 12:53:38,012 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-04-16 12:53:39,817 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-04-16 12:53:41,977 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-04-16 12:53:44,981 | INFO | req:N/A | app.tools.tools_registry | 5 tools loaded
+2026-04-16 12:54:00,900 | INFO | req:N/A | app.memory.sqlite_memory | Retrieving all conversation threads
+2026-04-16 12:54:36,368 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-04-16 12:54:37,938 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-04-16 12:54:39,593 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-04-16 12:54:39,930 | INFO | req:N/A | app.tools.tools_registry | 5 tools loaded
+2026-04-16 12:55:01,234 | INFO | req:N/A | app.memory.sqlite_memory | YouTube URL saved | thread=790c312a-eb03-4327-9a13-0906b874fd13
+2026-04-16 13:10:15,921 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-04-16 13:10:18,332 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-04-16 13:10:21,456 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-04-16 13:10:22,209 | INFO | req:N/A | app.tools.tools_registry | 5 tools loaded
+2026-04-16 13:14:54,993 | INFO | req:N/A | app.memory.sqlite_memory | Retrieving all conversation threads
+2026-04-16 13:15:11,879 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-04-16 13:15:14,136 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-04-16 13:15:16,075 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-04-16 13:15:16,418 | INFO | req:N/A | app.tools.tools_registry | 5 tools loaded
+2026-04-16 13:15:55,835 | INFO | req:N/A | app.memory.sqlite_memory | Retrieving all conversation threads
+2026-04-16 13:16:12,060 | INFO | req:N/A | app.memory.sqlite_memory | YouTube URL saved | thread=09e225ce-7a48-4fbb-8a2a-87e4bdb79ef1
+2026-04-16 13:23:52,590 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-04-16 13:23:54,509 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-04-16 13:23:57,367 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-04-16 13:23:57,947 | INFO | req:N/A | app.tools.tools_registry | 5 tools loaded
+2026-04-16 13:26:15,717 | INFO | req:N/A | app.memory.sqlite_memory | Retrieving all conversation threads
+2026-04-16 13:26:32,735 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-04-16 13:26:35,469 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-04-16 13:26:38,889 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-04-16 13:26:39,420 | INFO | req:N/A | app.tools.tools_registry | 5 tools loaded
+2026-04-16 13:26:57,563 | INFO | req:N/A | app.memory.sqlite_memory | YouTube URL saved | thread=9678ac82-3f41-4d4b-aa85-9b36b5280da6
+2026-04-16 13:38:26,885 | INFO | req:N/A | app.memory.sqlite_memory | Retrieving all conversation threads
+2026-04-16 13:38:53,293 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-04-16 13:38:55,014 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-04-16 13:38:58,575 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-04-16 13:38:59,320 | INFO | req:N/A | app.tools.tools_registry | 5 tools loaded
+2026-04-16 13:40:25,839 | INFO | req:N/A | app.memory.sqlite_memory | YouTube URL saved | thread=96cf6c81-5808-4384-9139-16214b5745ff
+2026-04-16 13:55:22,346 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-04-16 13:55:23,593 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-04-16 13:55:25,026 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-04-16 13:55:25,554 | INFO | req:N/A | app.tools.tools_registry | 5 tools loaded
+2026-04-16 13:55:57,861 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-04-16 13:55:59,349 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-04-16 13:56:00,836 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-04-16 13:56:01,097 | INFO | req:N/A | app.tools.tools_registry | 5 tools loaded
+2026-04-16 13:56:39,468 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-04-16 13:56:41,044 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-04-16 13:56:42,421 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-04-16 13:56:43,300 | INFO | req:N/A | app.tools.tools_registry | 5 tools loaded
+2026-04-16 13:56:43,360 | INFO | req:N/A | app.memory.sqlite_memory | Retrieving all conversation threads
+2026-04-16 13:58:26,143 | INFO | req:N/A | app.memory.sqlite_memory | YouTube URL saved | thread=0e1bab22-c9cd-4af4-a441-30f6860f97c1
+2026-04-16 14:21:34,471 | INFO | req:N/A | app.tools.search_tool | Search tool called | query='how OAuth is explained'
+2026-04-16 14:21:42,195 | INFO | req:N/A | app.tools.search_tool | Search completed successfully
+2026-04-16 14:31:01,347 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-04-16 14:31:03,424 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-04-16 14:31:06,018 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-04-16 14:31:06,416 | INFO | req:N/A | app.tools.tools_registry | 5 tools loaded

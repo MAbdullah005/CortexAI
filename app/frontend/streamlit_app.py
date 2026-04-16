@@ -12,10 +12,10 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
 # Backend (KEEP — no delete as you requested)
 from app.graph.agent_graph import chatbot
-from app.rag.ingest import ingest_pdf
+from app.core.ingest import ingest_pdf
 from app.llm.llm_config import llm
 from app.memory.thread_titles import set_thread_title
-from app.rag.retriever import thread_document_metadata
+from app.core.retriever import thread_document_metadata
 from app.memory.sqlite_memory import retrieve_all_threads
 from app.memory.sqlite_memory import get_thread_title_db, save_thread_title
 from app.memory.thread_titles import get_thread_title
@@ -33,6 +33,8 @@ def reset_chat():
     thread_id = generate_thread_id()
     st.session_state["thread_id"] = thread_id
     st.session_state["message_history"] = []
+    st.session_state["youtube_url"] = None   # ✅ ADD THIS
+
     if thread_id not in st.session_state["chat_threads"]:
         st.session_state["chat_threads"].append(thread_id)
 
@@ -45,7 +47,9 @@ def load_conversation(thread_id):
 # =========================== API ===========================
 
 API_URL = "http://localhost:8000/chat"
-API_UPLOAD = "http://localhost:8000/upload-pdf"   # ✅ UPDATED
+API_UPLOAD = "http://localhost:8000/upload-pdf"
+API_SET_YT = "http://localhost:8000/set_youtube"
+API_GET_YT = "http://localhost:8000/get_youtube"   # ✅ UPDATED
 
 
 def call_api(user_input, thread_id):
@@ -76,11 +80,22 @@ if "chat_threads" not in st.session_state:
 if "ingested_docs" not in st.session_state:
     st.session_state["ingested_docs"] = {}
 
+# Load YouTube URL from backend (per thread)
+if "youtube_url" not in st.session_state:
+    try:
+        thread_key = st.session_state["thread_id"]
+        res = requests.get(f"{API_GET_YT}/{thread_key}")
+        if res.status_code == 200:
+            st.session_state["youtube_url"] = res.json().get("youtube_url")
+    except:
+        st.session_state["youtube_url"] = None
+
 thread_key = st.session_state["thread_id"]
 threads = st.session_state["chat_threads"][::-1]
 thread_docs = st.session_state["ingested_docs"].setdefault(thread_key, {})
 
 selected_thread = None
+
 
 
 # ============================ Sidebar ============================
@@ -136,6 +151,33 @@ if thread_docs:
     )
 
 st.sidebar.divider()
+
+# ===================== YouTube Input =====================
+
+
+st.sidebar.subheader("YouTube Video")
+
+youtube_url = st.sidebar.text_input("Paste YouTube URL")
+
+if st.sidebar.button("Load Video"):
+    if youtube_url:
+        try:
+            res = requests.post(
+                API_SET_YT,
+                json={
+                    "thread_id": thread_key,
+                    "youtube_url": youtube_url
+                }
+            )
+
+            if res.status_code == 200:
+                st.session_state["youtube_url"] = youtube_url
+                st.sidebar.success("✅ Video loaded successfully")
+            else:
+                st.sidebar.error("❌ Failed to load video")
+
+        except Exception as e:
+            st.sidebar.error(f"❌ Error: {str(e)}")
 
 
 # ===================== Past Conversations =====================
@@ -205,10 +247,26 @@ if user_input:
         )
 
 
+
+# ===================== YouTube Player =====================
+
+if st.session_state.get("youtube_url"):
+    st.video(st.session_state["youtube_url"])
+
+
 # ============================ Thread Switch ============================
 
 if selected_thread:
     st.session_state["thread_id"] = selected_thread
+
+    # ✅ Load YouTube URL
+    try:
+        res = requests.get(f"{API_GET_YT}/{selected_thread}")
+        if res.status_code == 200:
+            st.session_state["youtube_url"] = res.json().get("youtube_url")
+    except:
+        st.session_state["youtube_url"] = None
+
     messages = load_conversation(selected_thread)
 
     temp_messages = []

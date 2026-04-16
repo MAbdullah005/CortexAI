@@ -9,7 +9,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyPDFLoader
 from app.llm.llm_config import llm,embeddings
 from langchain_community.tools import DuckDuckGoSearchRun
-from app.rag.retriever import _THREAD_METADATA,_THREAD_RETRIEVERS
+from app.core.retriever import _THREAD_METADATA,_THREAD_RETRIEVERS
 from langchain_community.vectorstores import FAISS
 
 

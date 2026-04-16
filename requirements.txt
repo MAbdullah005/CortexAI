@@ -1,0 +1,11 @@
+langchain
+langgraph
+youtube_transcript_api
+fastapi
+streamlit
+dotenv
+langchain_ollama
+langchain_openai
+langgraph-checkpoint-sqlite
+langchain-text-splitters
+langchain_community
