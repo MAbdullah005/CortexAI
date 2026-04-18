@@ -2,6 +2,9 @@ from youtube_transcript_api import YouTubeTranscriptApi
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS 
 from langchain_ollama import OllamaEmbeddings
+from app.core.vectorstore import create_vector_db
+from app.core.splitter import chunk_text
+from app.core.embeddings import get_embeddings
 from youtube_transcript_api._errors import NoTranscriptFound, RequestBlocked
 import re
 
@@ -62,19 +65,17 @@ def build_youtube_retriever(url: str):
         raise ValueError("No valid transcript found")
 
     # Chunking
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=200
-    )
-
-    docs = splitter.create_documents([text])
+    docs =chunk_text(text=text)
 
     # Embeddings (same style as your project)
-    embeddings = OllamaEmbeddings(model="nomic-embed-text")
+    embeddings = get_embeddings()
 
-    vectorstore = FAISS.from_documents(docs, embeddings)
+    vectorstore = create_vector_db(docs,embeddings=embeddings)
 
-    return vectorstore.as_retriever(search_kwargs={"k": 3})
+    return vectorstore.as_retriever(
+        search_type="similarity",
+        search_kwargs={"k": 3}
+    )
 
 """
 if __name__=='__main__':

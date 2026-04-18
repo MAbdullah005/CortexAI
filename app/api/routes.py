@@ -2,13 +2,22 @@ from fastapi import APIRouter, UploadFile, File
 from fastapi.responses import StreamingResponse
 from typing import List
 import uuid
+from fastapi import Form
+from fastapi.responses import FileResponse
+import shutil
+import os
+from fastapi import UploadFile, File, Form
+from fastapi.responses import FileResponse
+
 from app.memory.sqlite_memory import save_youtube_url
+from fastapi.responses import Response
+
 
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 
 # Your existing backend imports
 from app.graph.agent_graph import chatbot
-from app.rag.ingest import ingest_pdf
+from app.core.ingest import ingest_pdf
 from app.memory.sqlite_memory import retrieve_all_threads, get_thread_title_db, save_thread_title
 from app.memory.thread_titles import get_thread_title
 from app.llm.title_generator import generate_chat_title
@@ -37,20 +46,6 @@ async def chat_endpoint(data: dict):
         "response": response["messages"][-1].content
     }
 
-
-# ========================= Upload PDF =========================
-
-@router.post("/upload-pdf")
-async def upload_pdf(file: UploadFile = File(...), thread_id: str = ""):
-    content = await file.read()
-
-    summary = ingest_pdf(
-        content,
-        thread_id=thread_id,
-        filename=file.filename,
-    )
-
-    return {"status": "success", "data": summary}
 
 
 # ========================= Threads =========================
@@ -139,3 +134,55 @@ def get_youtube(thread_id: str):
     url = get_youtube_url(thread_id)
 
     return {"youtube_url": url}
+
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
+UPLOAD_DIR = os.path.join(BASE_DIR, "uploaded_pdfs")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+@router.post("/upload-pdf")
+async def upload_pdf(
+    file: UploadFile = File(...),
+    thread_id: str = Form(...)   # 🔥 IMPORTANT FIX
+):
+    print("🔥 UPLOAD ENDPOINT HIT 🔥")
+
+    if not thread_id:
+        return {"error": "thread_id missing"}
+
+    file_path = os.path.join(UPLOAD_DIR, f"{thread_id}.pdf")
+
+    print("THREAD ID:", thread_id)
+    print("SAVE PATH:", file_path)
+
+    content = await file.read()
+
+    if not content:
+        return {"error": "File is empty"}
+
+    with open(file_path, "wb") as f:
+        f.write(content)
+
+    print("EXISTS AFTER SAVE:", os.path.exists(file_path))
+
+    summary = ingest_pdf(
+        content,
+        thread_id=thread_id,
+        filename=file.filename,
+    )
+
+    return {"status": "success", "data": summary}
+
+
+@router.get("/get_pdf/{thread_id}")
+def get_pdf(thread_id: str):
+    file_path = os.path.join(UPLOAD_DIR, f"{thread_id}.pdf")
+
+    print("GET FILE PATH:", file_path)
+    print("EXISTS:", os.path.exists(file_path))
+    cwd = os.getcwd()
+    print(cwd)
+
+    if os.path.exists(file_path):
+        return FileResponse(file_path, media_type="application/pdf")
+
+    return {"error": "No PDF found"}

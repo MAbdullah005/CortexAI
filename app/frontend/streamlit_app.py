@@ -23,6 +23,52 @@ from app.memory.thread_titles import get_thread_title
 from app.llm.title_generator import generate_chat_title
 
 
+# =========================== GLOBAL UI STYLE ===========================
+st.markdown("""
+<style>
+
+/* Remove all padding */
+.block-container {
+    padding: 0rem !important;
+}
+
+/* Remove gap between columns */
+.main > div {
+    gap: 0rem !important;
+}
+
+/* Sidebar width */
+section[data-testid="stSidebar"] {
+    width: 240px !important;
+}
+
+/* Remove column padding */
+div[data-testid="column"] {
+    padding: 0px !important;
+}
+
+/* Chat scroll */
+.chat-box {
+    height: 80vh;
+    overflow-y: auto;
+}
+
+/* Video + PDF container */
+.video-box {
+    height: 90vh;
+    overflow-y: auto;
+    padding: 0px;
+    margin: 0px;
+}
+
+/* Remove space between elements */
+.element-container {
+    margin-bottom: 0px !important;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
 # =========================== Utilities ===========================
 
 def generate_thread_id():
@@ -33,7 +79,7 @@ def reset_chat():
     thread_id = generate_thread_id()
     st.session_state["thread_id"] = thread_id
     st.session_state["message_history"] = []
-    st.session_state["youtube_url"] = None   # ✅ ADD THIS
+    st.session_state["youtube_url"] = None
 
     if thread_id not in st.session_state["chat_threads"]:
         st.session_state["chat_threads"].append(thread_id)
@@ -48,11 +94,12 @@ def load_conversation(thread_id):
 
 API_URL = "http://localhost:8000/chat"
 API_UPLOAD = "http://localhost:8000/upload-pdf"
+API_GET_PDF = "http://localhost:8000/get_pdf"
 API_SET_YT = "http://localhost:8000/set_youtube"
-API_GET_YT = "http://localhost:8000/get_youtube"   # ✅ UPDATED
+API_GET_YT = "http://localhost:8000/get_youtube"
 
 
-def call_api(user_input, thread_id):
+def  call_api(user_input, thread_id):
     try:
         response = requests.post(
             API_URL,
@@ -64,7 +111,6 @@ def call_api(user_input, thread_id):
         return response.json().get("response", "⚠️ No response")
     except Exception as e:
         return f"❌ API Error: {str(e)}"
-
 
 # ======================= Session Initialization ===================
 
@@ -80,7 +126,10 @@ if "chat_threads" not in st.session_state:
 if "ingested_docs" not in st.session_state:
     st.session_state["ingested_docs"] = {}
 
-# Load YouTube URL from backend (per thread)
+# ✅ NEW (PDF STATE FIX)
+if "pdf_uploaded" not in st.session_state:
+    st.session_state["pdf_uploaded"] = False
+
 if "youtube_url" not in st.session_state:
     try:
         thread_key = st.session_state["thread_id"]
@@ -95,8 +144,6 @@ threads = st.session_state["chat_threads"][::-1]
 thread_docs = st.session_state["ingested_docs"].setdefault(thread_key, {})
 
 selected_thread = None
-
-
 
 # ============================ Sidebar ============================
 
@@ -113,35 +160,39 @@ if st.sidebar.button("Clear Conversation"):
 
 st.sidebar.divider()
 
-# ===================== PDF Upload =====================
-
 uploaded_pdf = st.sidebar.file_uploader("Upload PDF", type=["pdf"])
-
 if uploaded_pdf:
-    if uploaded_pdf.name not in thread_docs:
-
+    if "uploaded" not in thread_docs:
         with st.sidebar.status("Uploading & Indexing PDF..."):
-
             try:
-                files = {"file": uploaded_pdf}
-                data = {"thread_id": thread_key}
+                files = {
+                "file": (uploaded_pdf.name, uploaded_pdf.getvalue(), "application/pdf")
+                  }
 
-                res = requests.post(API_UPLOAD, files=files, data=data)  # ✅ UPDATED
+                data = {
+                  "thread_id": thread_key   # MUST match Form(...)
+                }
+
+                res = requests.post(API_UPLOAD, files=files, data=data)
 
                 if res.status_code == 200:
-                    thread_docs[uploaded_pdf.name] = {"status": "uploaded"}
+                    thread_docs[uploaded_pdf.name] = {
+                        "status": "uploaded",
+                        "filename": uploaded_pdf.name
+                    }
+
+                    # ✅ CRITICAL FIX
+                    st.session_state["pdf_uploaded"] = True
+
                     st.sidebar.success("✅ PDF uploaded & indexed")
                 else:
                     st.sidebar.error("❌ Upload failed")
 
             except Exception as e:
                 st.sidebar.error(f"❌ Error: {str(e)}")
-
     else:
         st.sidebar.info("PDF already indexed.")
 
-
-# Show document info
 if thread_docs:
     latest_doc = list(thread_docs.values())[-1]
     st.sidebar.success(
@@ -151,9 +202,6 @@ if thread_docs:
     )
 
 st.sidebar.divider()
-
-# ===================== YouTube Input =====================
-
 
 st.sidebar.subheader("YouTube Video")
 
@@ -169,97 +217,130 @@ if st.sidebar.button("Load Video"):
                     "youtube_url": youtube_url
                 }
             )
-
             if res.status_code == 200:
                 st.session_state["youtube_url"] = youtube_url
                 st.sidebar.success("✅ Video loaded successfully")
             else:
                 st.sidebar.error("❌ Failed to load video")
-
         except Exception as e:
             st.sidebar.error(f"❌ Error: {str(e)}")
-
-
-# ===================== Past Conversations =====================
 
 st.sidebar.subheader("Past Conversations")
 
 for thread_id in threads:
     title = get_thread_title_db(thread_id)
-
-    if st.sidebar.button(
-        title
-        ,key=f"thread-{thread_id}"):
-           selected_thread = thread_id
+    if st.sidebar.button(title, key=f"thread-{thread_id}"):
+        selected_thread = thread_id
 
 
-# ============================ Main Chat ============================
+# ============================ MAIN LAYOUT ============================
 
 st.title("Multi Utility Chatbot")
 
-# Show messages
-for message in st.session_state["message_history"]:
-    with st.chat_message(message["role"]):
-        st.write(message["content"])
+# 🔥 RESIZABLE SPLIT (SIMULATED DRAG)
+split_ratio = st.slider("Resize Chat ↔ Video", 10, 60, 70)
 
-user_input = st.chat_input("Ask something...")
+col_video, col_chat = st.columns([100 - split_ratio, split_ratio], gap="small")
 
+# ============================ CHAT ============================
+with col_chat:
+    st.subheader("💬 Chat")
 
-if user_input:
+    # Chat container
+    chat_container = st.container()
 
-    current_title = get_thread_title_db(thread_key)
+    # ================= RENDER MESSAGES =================
+    with chat_container:
+        for message in st.session_state["message_history"]:
+            with st.chat_message(message["role"]):
+                st.write(message["content"])
 
-    if current_title.startswith("Chat"):
-        try:
-            new_title = generate_chat_title(user_input)
-            save_thread_title(thread_key, new_title)
-            st.rerun()
-        except:
-            pass
+    # ================= USER INPUT =================
+    user_input = st.chat_input("Ask something...")
 
-    st.session_state["message_history"].append(
-        {"role": "user", "content": user_input}
-    )
+    if user_input:
 
-    with st.chat_message("user"):
-        st.write(user_input)
-
-    # ===================== API CALL INSTEAD OF GRAPH =====================
-
-    with st.chat_message("assistant"):
-
-        ai_message = call_api(user_input, thread_key)   # ✅ UPDATED
-
-        st.write(ai_message)
-
-    st.session_state["message_history"].append(
-        {"role": "assistant", "content": ai_message}
-    )
-
-    # ===================== Metadata (still works if needed) =====================
-
-    doc_meta = thread_document_metadata(thread_key)
-    if doc_meta:
-        st.caption(
-            f"Source: {doc_meta.get('filename')} | "
-            f"Chunks: {doc_meta.get('chunks')} | "
-            f"Pages: {doc_meta.get('documents')}"
+        # Save user message
+        st.session_state["message_history"].append(
+            {"role": "user", "content": user_input}
         )
 
+        # Add placeholder assistant message
+        st.session_state["message_history"].append(
+            {"role": "assistant", "content": "⏳ Thinking..."}
+        )
+
+        st.rerun()
+
+    # ================= HANDLE API AFTER RERUN =================
+    if st.session_state["message_history"]:
+        last_msg = st.session_state["message_history"][-1]
+
+        if last_msg["role"] == "assistant" and last_msg["content"] == "⏳ Thinking...":
+
+            user_msg = st.session_state["message_history"][-2]["content"]
+
+            ai_message = call_api(user_msg, thread_key)
+
+            # Replace placeholder
+            st.session_state["message_history"][-1]["content"] = ai_message
+
+            st.rerun()
 
 
-# ===================== YouTube Player =====================
+        doc_meta = thread_document_metadata(thread_key)
+        if doc_meta:
+            st.caption(
+                f"Source: {doc_meta.get('filename')} | "
+                f"Chunks: {doc_meta.get('chunks')} | "
+                f"Pages: {doc_meta.get('documents')}"
+            )
 
-if st.session_state.get("youtube_url"):
-    st.video(st.session_state["youtube_url"])
 
+# ============================ VIDEO ============================
+# ============================ VIDEO + PDF ============================
+with col_video:
+    st.subheader("🎥 Video + 📄 Document")
+
+    st.markdown('<div class="video-box">', unsafe_allow_html=True)
+
+    # ================= VIDEO =================
+    if st.session_state.get("youtube_url"):
+        st.video(st.session_state["youtube_url"])
+    else:
+        st.info("No video loaded")
+
+    # 🔥 NO GAP
+    st.markdown("<div style='margin-top:5px'></div>", unsafe_allow_html=True)
+
+    # ================= PDF =================
+    if st.session_state.get("pdf_uploaded"):
+
+        pdf_url = f"{API_GET_PDF}/{thread_key}"
+
+        pdf_html = f"""
+        <iframe 
+            src="{pdf_url}" 
+            width="100%" 
+            height="600px"
+            style="border:none;">
+        </iframe>
+        """
+
+        st.markdown(pdf_html, unsafe_allow_html=True)
+
+    else:
+        st.info("Upload a PDF to view it here")
+
+    st.markdown('</div>', unsafe_allow_html=True)
+  # ================= PDF VIEWER =================
 
 # ============================ Thread Switch ============================
 
 if selected_thread:
     st.session_state["thread_id"] = selected_thread
+    st.session_state["pdf_uploaded"] = False
 
-    # ✅ Load YouTube URL
     try:
         res = requests.get(f"{API_GET_YT}/{selected_thread}")
         if res.status_code == 200:
@@ -278,7 +359,7 @@ if selected_thread:
     st.rerun()
 
 
-# ============================ Download Chat ============================
+# ============================ Download ============================
 
 st.divider()
 

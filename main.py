@@ -4,7 +4,6 @@ from app.services import chat_service,pdf_service
 from fastapi.responses import StreamingResponse
 from langchain_core.messages import HumanMessage
 from fastapi import APIRouter, UploadFile, File
-from app.rag.ingest import ingest_pdf
 
 
 # Register routes
