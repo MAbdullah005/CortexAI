@@ -29,13 +29,8 @@ def youtube_rag_tool(query: str, config: RunnableConfig) -> str:
         else:
             retriever = _YT_CACHE[thread_id]
 
-       # docs = retriever.get_relevant_documents(query)
-        retriever_1 = retriever.as_retriever(
-        search_type="similarity",
-        search_kwargs={"k": 3}
-    )
-        retrieved_docs = retriever_1.invoke(query)
-
+        docs = retriever.invoke(query)
+        
         if not docs:
             return "❌ No relevant content found in video."
 
