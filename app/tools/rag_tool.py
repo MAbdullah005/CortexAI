@@ -5,11 +5,12 @@ Retrieves relevant information from indexed PDFs for a given chat thread.
 This tool queries the vector retriever associated with the thread and
 returns relevant context for the LLM to generate grounded responses.
 """
+"""
 
 from typing import Optional, Dict, Any, List
 from langchain_core.tools import tool
 
-from app.core.retriever import _get_retriever, _THREAD_METADATA
+#from app.core.retriever import _get_retriever, _THREAD_METADATA
 from app.utils.logger import get_logger, log_latency
 
 logger = get_logger(__name__)
@@ -17,7 +18,7 @@ logger = get_logger(__name__)
 
 @tool
 def rag_tool(query: str, thread_id: Optional[str] = None) -> Dict[str, Any]:
-    """
+    
     Retrieve relevant document chunks from the indexed PDF for a specific chat thread.
 
     Parameters
@@ -37,7 +38,7 @@ def rag_tool(query: str, thread_id: Optional[str] = None) -> Dict[str, Any]:
             "metadata": list of metadata for each chunk,
             "source_file": filename
         }
-    """
+    
 
     logger.info(f"RAG tool called | query='{query}' | thread_id={thread_id}")
 
@@ -88,3 +89,5 @@ def rag_tool(query: str, thread_id: Optional[str] = None) -> Dict[str, Any]:
             "error": str(e),
             "query": query,
         }
+
+        """

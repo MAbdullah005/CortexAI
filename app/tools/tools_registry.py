@@ -9,7 +9,7 @@ from langchain.tools import BaseTool
 
 # Import all tools here
 from app.tools.calculator_tool import calculator
-from app.tools.rag_tool import rag_tool
+#from app.tools.rag_tool import rag_tool
 from app.tools.search_tool import search_tool
 from app.tools.stock_tool import get_stock_price
 from app.tools.python_executor import python_executor
@@ -30,7 +30,7 @@ def get_all_tools() -> list[BaseTool]:
 
     tools = [
         calculator,
-        rag_tool,
+        #rag_tool,
         search_tool,
         get_stock_price,
         python_executor

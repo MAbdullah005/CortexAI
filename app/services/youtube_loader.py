@@ -12,7 +12,7 @@ def extract_video_id(url: str) -> str:
     match = re.search(r"(?:v=|youtu\.be/)([a-zA-Z0-9_-]+)", url)
     if not match:
         raise ValueError("Invalid YouTube URL")
-    return match.group(1)
+    return match.group(1) if match else url
 
 def load_youtube_transcript(url: str) -> str:
     video_id = extract_video_id(url)
