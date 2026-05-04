@@ -4,10 +4,14 @@ from typing import List
 import uuid
 from fastapi import Form
 from fastapi.responses import FileResponse
+from app.services.youtube_loader import extract_video_id
+from app.core.retriever import clear_thread_cache
 import shutil
 import os
+import sqlite3
 from fastapi import UploadFile, File, Form
 from fastapi.responses import FileResponse
+from app.services.youtube_ingest import ingest_youtube
 
 from app.memory.sqlite_memory import save_youtube_url
 from fastapi.responses import Response
@@ -21,8 +25,16 @@ from app.core.ingest import ingest_pdf
 from app.memory.sqlite_memory import retrieve_all_threads, get_thread_title_db, save_thread_title
 from app.memory.thread_titles import get_thread_title
 from app.llm.title_generator import generate_chat_title
+from langgraph.checkpoint.sqlite import SqliteSaver
 
 router = APIRouter()
+
+DB_DIR = "database"
+DB_PATH = os.path.join(DB_DIR, "chatbot_conv.db")
+
+conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+
+checkpointer = SqliteSaver(conn=conn)
 
 
 # ========================= Chat Endpoint =========================
@@ -103,37 +115,70 @@ def generate_title(data: dict):
 
     return {"title": title}
 
-
 @router.post("/set_youtube")
 def set_youtube(data: dict):
-    thread_id = data.get("thread_id")
-    youtube_url = data.get("youtube_url")
+    thread_id = data["thread_id"]
+    youtube_url = data["youtube_url"]
 
-    if not thread_id or not youtube_url:
-        return {"error": "thread_id and youtube_url are required"}
+    from app.utils.hash_utils import hash_string
 
-    # ✅ Save in DB
-    save_youtube_url(thread_id, youtube_url)
+    video_id = extract_video_id(youtube_url)
+    doc_hash = hash_string(video_id)
 
-    # ✅ Reset in-memory retriever cache (IMPORTANT)
-    try:
-        from app.core.thread_store import _THREAD_DATA
+    cursor = conn.cursor()
 
-        if thread_id in _THREAD_DATA:
-            _THREAD_DATA[thread_id]["youtube_retriever"] = None
+    # 🔍 Check existing
+    cursor.execute("SELECT doc_id FROM documents WHERE content_hash=?", (doc_hash,))
+    row = cursor.fetchone()
 
-    except Exception:
-        pass  # safe fallback if not using cache
+    if row:
+        doc_id = row[0]
+    else:
+        import uuid
+        doc_id = str(uuid.uuid4())
 
-    return {"status": "YouTube URL saved successfully"}
+        # 🔥 Only fetch + embed ONCE
+        vectorstore_path = ingest_youtube(video_id, doc_id)
+
+        cursor.execute("""
+        INSERT INTO documents (doc_id, type, content_hash, source, vectorstore_path)
+        VALUES (?, ?, ?, ?, ?)
+        """, (doc_id, "youtube", doc_hash, video_id, vectorstore_path))
+
+    # 🔗 Link to thread
+    cursor.execute("""
+    INSERT OR IGNORE INTO thread_documents (thread_id, doc_id)
+    VALUES (?, ?)
+    """, (thread_id, doc_id))
+
+    conn.commit()
+    clear_thread_cache(thread_id)
+
+    return {"status": "ok"}
+
 
 @router.get("/get_youtube/{thread_id}")
 def get_youtube(thread_id: str):
-    from app.memory.sqlite_memory import get_youtube_url
+    cursor = conn.cursor()
 
-    url = get_youtube_url(thread_id)
+    cursor.execute("""
+    SELECT source FROM documents
+    JOIN thread_documents USING(doc_id)
+    WHERE thread_id=? AND type='youtube'
+    """, (thread_id,))
 
-    return {"youtube_url": url}
+    row = cursor.fetchone()
+
+    if row:
+        video_id = row[0]
+
+        # Convert back to full URL
+        youtube_url = f"https://www.youtube.com/watch?v={video_id}"
+
+        return {"youtube_url": youtube_url}
+
+    return {"youtube_url": None}
+
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
 UPLOAD_DIR = os.path.join(BASE_DIR, "uploaded_pdfs")
@@ -142,47 +187,79 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 @router.post("/upload-pdf")
 async def upload_pdf(
     file: UploadFile = File(...),
-    thread_id: str = Form(...)   # 🔥 IMPORTANT FIX
+    thread_id: str = Form(...)
 ):
-    print("🔥 UPLOAD ENDPOINT HIT 🔥")
-
-    if not thread_id:
-        return {"error": "thread_id missing"}
-
-    file_path = os.path.join(UPLOAD_DIR, f"{thread_id}.pdf")
-
-    print("THREAD ID:", thread_id)
-    print("SAVE PATH:", file_path)
-
     content = await file.read()
 
-    if not content:
-        return {"error": "File is empty"}
+    from app.utils.hash_utils import hash_bytes
+    doc_hash = hash_bytes(content)
+
+    cursor = conn.cursor()
+
+    # 🔍 Check if document already exists
+    cursor.execute("SELECT doc_id, vectorstore_path FROM documents WHERE content_hash=?", (doc_hash,))
+    row = cursor.fetchone()
+
+    if row:
+        doc_id = row[0]
+
+        # 🔗 Link to thread (NO RE-EMBEDDING)
+        cursor.execute("""
+        INSERT OR IGNORE INTO thread_documents (thread_id, doc_id)
+        VALUES (?, ?)
+        """, (thread_id, doc_id))
+
+        conn.commit()
+        clear_thread_cache(thread_id)
+
+        return {"status": "reused", "doc_id": doc_id}
+
+    # 🆕 New document
+    import uuid
+    doc_id = str(uuid.uuid4())
+
+    file_path = os.path.join("uploaded_pdfs", f"{doc_hash}.pdf")
 
     with open(file_path, "wb") as f:
         f.write(content)
 
-    print("EXISTS AFTER SAVE:", os.path.exists(file_path))
+    # 🔥 INGEST ONLY ONCE
+    vectorstore_path = ingest_pdf(
+    file_bytes=content,
+    filename=file.filename,
+    doc_id=doc_id
+)
 
-    summary = ingest_pdf(
-        content,
-        thread_id=thread_id,
-        filename=file.filename,
-    )
+    cursor.execute("""
+    INSERT INTO documents (doc_id, type, content_hash, source, vectorstore_path)
+    VALUES (?, ?, ?, ?, ?)
+    """, (doc_id, "pdf", doc_hash, file_path, vectorstore_path))
 
-    return {"status": "success", "data": summary}
+    cursor.execute("""
+    INSERT INTO thread_documents (thread_id, doc_id)
+    VALUES (?, ?)
+    """, (thread_id, doc_id))
 
+    conn.commit()
+
+    return {"status": "new", "doc_id": doc_id}
 
 @router.get("/get_pdf/{thread_id}")
 def get_pdf(thread_id: str):
-    file_path = os.path.join(UPLOAD_DIR, f"{thread_id}.pdf")
+    cursor = conn.cursor()
 
-    print("GET FILE PATH:", file_path)
-    print("EXISTS:", os.path.exists(file_path))
-    cwd = os.getcwd()
-    print(cwd)
+    cursor.execute("""
+    SELECT source FROM documents
+    JOIN thread_documents USING(doc_id)
+    WHERE thread_id=? AND type='pdf'
+    """, (thread_id,))
 
-    if os.path.exists(file_path):
-        return FileResponse(file_path, media_type="application/pdf")
+    row = cursor.fetchone()
+
+    if row:
+        file_path = row[0]
+
+        if os.path.exists(file_path):
+            return FileResponse(file_path, media_type="application/pdf")
 
     return {"error": "No PDF found"}

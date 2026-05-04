@@ -9,6 +9,7 @@ Handles:
 - Thread metadata storage
 """
 
+"""
 import os
 from typing import Optional
 
@@ -41,9 +42,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 # =========================================
 
 def process_pdf(file_path: str, thread_id: str) -> dict:
-    """
-    Process PDF and create retriever for a thread.
-    """
+    
 
     try:
         logger.info(f"Processing PDF | thread_id={thread_id}")
@@ -102,10 +101,7 @@ def process_pdf(file_path: str, thread_id: str) -> dict:
 # =========================================
 
 def save_uploaded_file(uploaded_file) -> Optional[str]:
-    """
-    Save uploaded file to disk.
-    """
-
+  
     try:
         file_path = os.path.join(UPLOAD_DIR, uploaded_file.name)
 
@@ -126,9 +122,7 @@ def save_uploaded_file(uploaded_file) -> Optional[str]:
 # =========================================
 
 def handle_pdf_upload(uploaded_file, thread_id: str) -> dict:
-    """
-    Complete PDF upload pipeline.
-    """
+
 
     file_path = save_uploaded_file(uploaded_file)
 
@@ -136,3 +130,4 @@ def handle_pdf_upload(uploaded_file, thread_id: str) -> dict:
         return {"error": "Failed to save file."}
 
     return process_pdf(file_path, thread_id)
+"""

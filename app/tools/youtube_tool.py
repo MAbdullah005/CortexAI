@@ -2,42 +2,32 @@ from langchain.tools import tool
 from langchain_core.runnables import RunnableConfig
 from app.memory.sqlite_memory import get_youtube_url
 from app.services.youtube_loader import build_youtube_retriever
+from app.core.retriever import get_thread_retriever
 
 _YT_CACHE = {}
 
 @tool
 def youtube_rag_tool(query: str, config: RunnableConfig) -> str:
     """
-    YouTube RAG Tool (FINAL FIXED VERSION)
+    Answer questions using retrieved content from thread documents.
     """
-
     try:
         thread_id = config.get("configurable", {}).get("thread_id")
 
         if not thread_id:
             return "⚠️ Missing thread_id"
 
-        youtube_url = get_youtube_url(thread_id)
-
-        if not youtube_url:
-            return "⚠️ No YouTube video found. Please load a video first."
-
-        # Cache retriever
-        if thread_id not in _YT_CACHE:
-            retriever = build_youtube_retriever(youtube_url)
-            _YT_CACHE[thread_id] = retriever
-        else:
-            retriever = _YT_CACHE[thread_id]
+        retriever = get_thread_retriever(thread_id)
 
         docs = retriever.invoke(query)
-        
+
         if not docs:
-            return "❌ No relevant content found in video."
+            return "❌ No relevant content found."
 
         context = "\n\n".join(d.page_content for d in docs)
 
         return f"""
-Answer based ONLY on this YouTube video:
+Answer based on retrieved documents:
 
 {context}
 

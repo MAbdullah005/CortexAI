@@ -33,6 +33,42 @@ checkpointer = SqliteSaver(conn=conn)
 logger.info(f"SQLite memory initialized | db={DB_PATH}")
 
 
+def init_db():
+    cursor = conn.cursor()
+
+    # THREADS
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS threads (
+        thread_id TEXT PRIMARY KEY,
+        title TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+    # 🔥 DOCUMENTS TABLE (MISSING)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS documents (
+        doc_id TEXT PRIMARY KEY,
+        type TEXT,
+        content_hash TEXT UNIQUE,
+        source TEXT,
+        vectorstore_path TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+    # 🔥 RELATION TABLE (MISSING)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS thread_documents (
+        thread_id TEXT,
+        doc_id TEXT,
+        PRIMARY KEY (thread_id, doc_id)
+    )
+    """)
+
+    conn.commit()
+
+
 # ================================
 # Thread Utilities
 # ================================
@@ -193,3 +229,6 @@ def get_youtube_url(thread_id: str) -> str:
     except Exception as e:
         logger.error(f"Failed to fetch YouTube URL: {str(e)}")
         return None
+    
+
+init_db()
