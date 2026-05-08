@@ -7,7 +7,8 @@ from typing import Dict, Any, Optional
 from langchain_community.vectorstores import FAISS
 from app.core.embeddings import get_embeddings
 from app.memory.sqlite_memory import checkpointer
-
+from rank_bm25 import BM25Okapi
+from langchain_core.documents import Document
 DB_PATH = "database/chatbot_conv.db"
 
 # 🔥 CACHE (VERY IMPORTANT)
@@ -15,7 +16,7 @@ _THREAD_CACHE: Dict[str, Any] = {}
 
 
 # ==============================
-# MAIN RETRIEVER (FINAL VERSION)
+# MAIN RETRIEVER (FINAL VERSION)a
 # ==============================
 def get_thread_retriever(thread_id: str):
     """
@@ -153,42 +154,115 @@ def thread_document_metadata(thread_id: str) -> dict:
         "total_docs": len(sources),
         "sources": sources
     }
-
 class SmartRetriever:
+
     def __init__(self, stores):
         self.stores = stores
 
-    def invoke(self, query):
-        all_docs = []
+        # 🔥 ALL DOCS FOR BM25
+        self.all_documents = []
 
-        # 1. Get top results per store
-        for vs in self.stores:
+        for vs in stores:
             try:
-                docs = vs.similarity_search_with_score(query, k=3)
+                docs = vs.similarity_search("", k=1000)
 
-                for doc, score in docs:
-                    doc.metadata["score"] = score
-                    all_docs.append(doc)
+                self.all_documents.extend(docs)
 
             except Exception as e:
-                print("Retriever error:", e)
+                print("BM25 load error:", e)
 
-        if not all_docs:
-            return []
+        # 🔥 TOKENIZE FOR BM25
+        self.bm25_docs = [
+            doc.page_content.split()
+            for doc in self.all_documents
+        ]
 
-        # 2. Global ranking (LOWER score = better in FAISS)
-        all_docs.sort(key=lambda x: x.metadata.get("score", 9999))
+        # 🔥 BM25 INDEX
+        self.bm25 = BM25Okapi(self.bm25_docs)
 
-        # 3. Remove duplicates (optional but good)
-        seen = set()
+    def invoke(self, query):
+
+        dense_results = []
+        sparse_results = []
+
+        # =========================================
+        # 1. DENSE SEARCH (FAISS)
+        # =========================================
+        for vs in self.stores:
+
+            try:
+                docs = vs.similarity_search_with_score(query, k=4)
+
+                for doc, score in docs:
+
+                    doc.metadata["dense_score"] = float(score)
+
+                    dense_results.append(doc)
+
+            except Exception as e:
+                print("Dense retrieval error:", e)
+
+        # =========================================
+        # 2. BM25 SEARCH
+        # =========================================
+
+        tokenized_query = query.split()
+
+        bm25_scores = self.bm25.get_scores(tokenized_query)
+
+        scored_docs = list(zip(self.all_documents, bm25_scores))
+
+        scored_docs.sort(key=lambda x: x[1], reverse=True)
+
+        top_sparse = scored_docs[:4]
+
+        for doc, score in top_sparse:
+
+            doc.metadata["bm25_score"] = float(score)
+
+            sparse_results.append(doc)
+
+        # =========================================
+        # 3. MERGE RESULTS
+        # =========================================
+
+        combined = dense_results + sparse_results
+
+        # =========================================
+        # 4. REMOVE DUPLICATES
+        # =========================================
+
         unique_docs = []
+        seen = set()
 
-        for doc in all_docs:
+        for doc in combined:
+
             content = doc.page_content.strip()
 
             if content not in seen:
+
                 seen.add(content)
+
                 unique_docs.append(doc)
 
-        # 4. Return top N
+        # =========================================
+        # 5. OPTIONAL RERANK
+        # =========================================
+
+        def final_score(doc):
+
+            dense = doc.metadata.get("dense_score", 1000)
+
+            bm25 = doc.metadata.get("bm25_score", 0)
+
+            # LOWER dense is better
+            dense_part = 1 / (1 + dense)
+
+            return dense_part + (0.3 * bm25)
+
+        unique_docs.sort(
+            key=final_score,
+            reverse=True
+        )
+
         return unique_docs[:5]
