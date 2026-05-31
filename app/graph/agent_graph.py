@@ -57,19 +57,20 @@ def route_after_planner(state: ChatState):
 
 graph = StateGraph(ChatState)
 
-# Nodes
-graph.add_node("chat_node",chat_node)
-graph.add_node("tools",tool_node)
-#graph.add_node("tool_executor", tool_executor_node)
+graph.add_node("chat_node", chat_node)
+graph.add_node("tools", tool_node)
 
-# Entry
+# Start
 graph.add_edge(START, "chat_node")
-graph.add_conditional_edges("chat_node",tools_condition)
 
 # Conditional routing
+graph.add_conditional_edges(
+    "chat_node",
+    tools_condition
+)
 
-# Loop back
-graph.add_edge("tools","chat_node")
+# Loop
+graph.add_edge("tools", "chat_node")
 
 # Compile
 chatbot = graph.compile(checkpointer=checkpointer)

@@ -233,6 +233,7 @@ with col_chat:
 
         if last_msg["role"] == "assistant" and last_msg["content"] == "⏳ Thinking...":
             user_msg = st.session_state["message_history"][-2]["content"]
+            print("....Usear Message ....:", user_msg)
             ai_message = call_api(user_msg, thread_key)
             st.session_state["message_history"][-1]["content"] = ai_message
 

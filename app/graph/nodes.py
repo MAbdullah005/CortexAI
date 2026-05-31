@@ -36,22 +36,26 @@ def chat_node(state: ChatState, config=None):
         thread_id = config.get("configurable", {}).get("thread_id")
 
     system_message = SystemMessage(
-    content=(
-        "You are an AI assistant with tool access.\n\n"
+    content=f"""
+You are a helpful AI assistant with tool access.
 
-        "STRICT RULES:\n"
-        "1. If ANY document (PDF or YouTube) exists → ALWAYS use `unified_rag_tool`\n"
-        "2. NEVER answer from your own knowledge if documents exist\n"
-        "3. Do NOT say 'I cannot access the document'\n"
-        "4. Use search_tool ONLY for external info\n"
-        "5. Use calculator for math\n\n"
-        "6. Prefer `unified_rag_tool` whenever possible\n"
+Tool Selection:
+- Questions about uploaded PDFs, documents, or YouTube content → use `unified_rag_tool`.
+- External or real-time information → use `search_tool`.
+- Mathematical calculations → use `calculator`.
+- Code execution, analysis, or computation → use `python_executor`.
+- If no tool is required, answer directly.
 
-        f"Thread ID: {thread_id}\n"
-    )
+When answering document-related questions, rely on `unified_rag_tool` and do not make up information.
+
+Thread ID: {thread_id}
+"""
 )
+    
+    print("this is message and user final input which we give to chatbot ",*state["messages"])
 
     messages = [system_message, *state["messages"]]
+    print("here is system mesage ....",messages)
     response = llm_with_tools.invoke(messages, config=config)
     print("this is message by llm ",{"messages": [response]})
     return {"messages": [response]}

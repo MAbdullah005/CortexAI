@@ -131,8 +131,19 @@ def set_youtube(data: dict):
     cursor.execute("SELECT doc_id FROM documents WHERE content_hash=?", (doc_hash,))
     row = cursor.fetchone()
 
-    if row:
+    if row[0]:
         doc_id = row[0]
+        print("....Video already parsent in vertor store ...")
+        cursor.execute("""
+        INSERT OR IGNORE INTO thread_documents (thread_id, doc_id)
+        VALUES (?, ?)
+        """,
+        (thread_id, doc_id))
+        conn.commit()
+        clear_thread_cache(thread_id)
+
+        return {"status": "reused", "Youtube_video_id": doc_id}
+        
     else:
         import uuid
         doc_id = str(uuid.uuid4())
