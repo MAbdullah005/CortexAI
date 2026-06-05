@@ -1003,3 +1003,69 @@
 2026-05-31 13:10:49,550 | INFO | req:N/A | app.memory.sqlite_memory | Retrieving all conversation threads
 2026-05-31 18:35:04,596 | INFO | req:N/A | app.memory.sqlite_memory | Retrieving all conversation threads
 2026-05-31 20:33:12,983 | INFO | req:N/A | app.memory.sqlite_memory | Retrieving all conversation threads
+2026-06-02 14:01:54,217 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-06-02 14:01:56,241 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-06-02 14:02:00,520 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-06-02 14:02:24,322 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-06-02 14:02:25,595 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-06-02 14:02:27,665 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-06-02 14:02:36,463 | INFO | req:N/A | app.memory.sqlite_memory | Retrieving all conversation threads
+2026-06-02 14:12:49,647 | INFO | req:N/A | app.tools.calculator_tool | Calculator tool called | operation=add | 2.0, 2.0
+2026-06-02 14:12:49,658 | INFO | req:N/A | app.tools.calculator_tool | Calculator result: 4.0
+2026-06-02 14:20:31,846 | INFO | req:N/A | app.memory.sqlite_memory | Retrieving all conversation threads
+2026-06-02 14:20:52,993 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-06-02 14:20:54,394 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-06-02 14:20:56,229 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-06-04 08:51:21,887 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-06-04 08:51:23,418 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-06-04 08:51:25,490 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-06-04 08:52:07,737 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-06-04 08:52:09,860 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-06-04 08:52:13,624 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-06-04 08:52:38,623 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-06-04 08:52:40,085 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-06-04 08:52:43,014 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-06-04 08:52:44,067 | INFO | req:N/A | app.memory.sqlite_memory | Retrieving all conversation threads
+2026-06-04 08:57:53,680 | INFO | req:N/A | app.memory.sqlite_memory | Retrieving all conversation threads
+2026-06-05 11:11:04,241 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-06-05 11:11:06,367 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-06-05 11:11:12,800 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-06-05 11:12:11,051 | INFO | req:N/A | app.memory.sqlite_memory | Retrieving all conversation threads
+2026-06-05 11:12:19,375 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-06-05 11:12:22,589 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-06-05 11:12:25,919 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-06-05 11:19:11,074 | INFO | req:N/A | app.memory.sqlite_memory | Retrieving all conversation threads
+2026-06-05 11:33:35,095 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-06-05 11:33:37,223 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-06-05 11:33:39,526 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-06-05 11:34:24,759 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-06-05 11:34:29,330 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-06-05 11:34:31,726 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-06-05 11:35:23,121 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-06-05 11:35:25,440 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-06-05 11:35:27,644 | INFO | req:N/A | app.memory.sqlite_memory | Retrieving all conversation threads
+2026-06-05 11:35:29,542 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-06-05 11:48:08,201 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-06-05 11:48:09,934 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-06-05 11:48:13,290 | INFO | req:N/A | app.memory.sqlite_memory | Retrieving all conversation threads
+2026-06-05 11:48:13,499 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-06-05 11:52:16,001 | INFO | req:N/A | app.memory.sqlite_memory | Retrieving all conversation threads
+2026-06-05 11:52:21,634 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-06-05 11:52:24,518 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-06-05 11:52:27,587 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-06-05 11:54:21,546 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-06-05 11:54:23,122 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-06-05 11:54:25,448 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-06-05 11:54:27,442 | INFO | req:N/A | app.memory.sqlite_memory | Retrieving all conversation threads
+2026-06-05 11:59:49,333 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-06-05 11:59:51,390 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-06-05 11:59:53,380 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-06-05 12:00:36,097 | INFO | req:N/A | app.memory.sqlite_memory | Retrieving all conversation threads
+2026-06-05 12:12:22,907 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-06-05 12:12:25,930 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-06-05 12:12:28,922 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-06-05 12:12:58,921 | INFO | req:N/A | app.memory.sqlite_memory | Retrieving all conversation threads
+2026-06-05 12:25:00,127 | INFO | req:N/A | app.memory.sqlite_memory | Retrieving all conversation threads
+2026-06-05 13:14:41,097 | INFO | req:N/A | app.llm.llm_config | Loading Ollama model: qwen2.5:7b
+2026-06-05 13:14:42,805 | INFO | req:N/A | app.llm.llm_config | Loading Ollama embeddings
+2026-06-05 13:14:44,660 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db

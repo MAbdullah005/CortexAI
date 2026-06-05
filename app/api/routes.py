@@ -131,7 +131,7 @@ def set_youtube(data: dict):
     cursor.execute("SELECT doc_id FROM documents WHERE content_hash=?", (doc_hash,))
     row = cursor.fetchone()
 
-    if row[0]:
+    if row is not None:
         doc_id = row[0]
         print("....Video already parsent in vertor store ...")
         cursor.execute("""
@@ -229,10 +229,11 @@ async def upload_pdf(
     import uuid
     doc_id = str(uuid.uuid4())
 
-    file_path = os.path.join("uploaded_pdfs", f"{doc_hash}.pdf")
+    file_path = os.path.join("data/uploads_pdfs/", f"{doc_hash}.pdf")
 
     with open(file_path, "wb") as f:
         f.write(content)
+        
 
     # 🔥 INGEST ONLY ONCE
     vectorstore_path = ingest_pdf(

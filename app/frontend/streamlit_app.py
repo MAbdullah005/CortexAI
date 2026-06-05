@@ -4,7 +4,8 @@ import uuid
 import json
 import streamlit as st
 import requests
-# video url :https://www.youtube.com/watch?v=uvsp0zKhPV4
+# video url 1 :https://www.youtube.com/watch?v=uvsp0zKhPV4
+# video url 2 :https://www.youtube.com/watch?v=kwd8rwkuoWc
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 

@@ -31,7 +31,9 @@ def unified_rag_tool(query: str, config: RunnableConfig) -> str:
 
         context = "\n\n".join(d.page_content for d in docs[:4])
 
-        return (f"""
+        print("/n \n here is docs context which get from retriver /n",context)
+
+        return llm.invoke(f"""
 Answer ONLY from the context below.
 
 Context:

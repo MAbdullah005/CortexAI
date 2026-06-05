@@ -154,6 +154,9 @@ def thread_document_metadata(thread_id: str) -> dict:
         "total_docs": len(sources),
         "sources": sources
     }
+
+
+
 class SmartRetriever:
 
     def __init__(self, stores):
