@@ -2,13 +2,12 @@ from __future__ import annotations
 
 import os
 import sqlite3
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
 from langchain_community.vectorstores import FAISS
-from app.core.embeddings import get_embeddings
+from app.llm.embeddings import get_embeddings
 from app.memory.sqlite_memory import checkpointer
 from rank_bm25 import BM25Okapi
-from langchain_core.documents import Document
 DB_PATH = "database/chatbot_conv.db"
 
 # 🔥 CACHE (VERY IMPORTANT)
@@ -37,6 +36,7 @@ def get_thread_retriever(thread_id: str):
     """, (thread_id,))
 
     rows = cursor.fetchall()
+    print("here is row that is feacth fom db ",rows)
     print("THREAD ID:", thread_id)
     print("DB ROWS:", rows)
     conn.close()

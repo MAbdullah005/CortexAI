@@ -6,11 +6,10 @@ Central place for initializing LLMs and embeddings used in the project.
 Supports easy switching between local (Ollama) and cloud models.
 """
 
-import os
 from dotenv import load_dotenv
 
-from langchain_ollama import ChatOllama, OllamaEmbeddings
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_ollama import ChatOllama
+from langchain_openai import ChatOpenAI
 
 from app.utils.logger import get_logger
 
@@ -19,10 +18,12 @@ load_dotenv()
 logger = get_logger(__name__)
 
 # ================================
-# Model Settings
+# Model Settingas
 # ================================
 
-DEFAULT_LOCAL_MODEL = "qwen2.5:7b"
+DEFAULT_LOCAL_MODEL = "qwen2.5:3b"
+DEFAULT_LOCAL_MODEL_title="qwen2.5:0.5b"
+
 DEFAULT_TEMPERATURE = 0.2
 
 USE_OPENAI = False   # Change to True if you want OpenAI
@@ -52,38 +53,33 @@ def load_llm():
 
         return ChatOllama(
             model=DEFAULT_LOCAL_MODEL,
-            temperature=DEFAULT_TEMPERATURE
+            temperature=DEFAULT_TEMPERATURE,
+            keep_alive=-1
         )
+    
 
-
-# ================================
-# Embedding Loader
-# ================================
-
-def load_embeddings():
-    """
-    Load embedding model.
-    """
+def generate_title_llm():
 
     if USE_OPENAI:
 
-        logger.info("Loading OpenAI embeddings")
+        logger.info("Loading OpenAI LLM")
 
-        return OpenAIEmbeddings()
+        return ChatOpenAI(
+            model="gpt-4o-mini",
+            temperature=DEFAULT_TEMPERATURE
+        )
 
     else:
 
-        logger.info("Loading Ollama embeddings")
+        logger.info(f"Loading Ollama model: {DEFAULT_LOCAL_MODEL_title}")
 
-        return OllamaEmbeddings(
-            model="nomic-embed-text"
+        return ChatOllama(
+            model=DEFAULT_LOCAL_MODEL_title,
+            temperature=DEFAULT_TEMPERATURE,
+            keep_alive=-1
         )
 
 
-# ================================
-# Singleton Instances
-# ================================
 
 llm = load_llm()
 
-embeddings = load_embeddings()

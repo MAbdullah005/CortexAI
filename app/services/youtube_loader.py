@@ -1,10 +1,5 @@
 from youtube_transcript_api import YouTubeTranscriptApi
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import FAISS 
-from langchain_ollama import OllamaEmbeddings
-from app.core.vectorstore import create_vector_db
-from app.core.splitter import chunk_text
-from app.core.embeddings import get_embeddings
+
 from youtube_transcript_api._errors import NoTranscriptFound, RequestBlocked
 import re
 
@@ -52,12 +47,10 @@ def load_youtube_transcript(url: str) -> str:
     #print(text)
     return text
 
-
-
+"""
 def build_youtube_retriever(url: str):
-    """
-    Build FAISS retriever from YouTube transcript
-    """
+    
+
 
     text = load_youtube_transcript(url)
 
@@ -77,9 +70,11 @@ def build_youtube_retriever(url: str):
         search_kwargs={"k": 3}
     )
 
-"""
+
 if __name__=='__main__':
     url="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
     load_youtube_transcript(url=url)
+
+
 
     """

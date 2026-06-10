@@ -9,18 +9,13 @@ import requests
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
-from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+from langchain_core.messages import HumanMessage
 
 # Backend imports (kept as requested — no deletions)
 from app.graph.agent_graph import chatbot
-from app.core.ingest import ingest_pdf
-from app.llm.llm_config import llm
-from app.memory.thread_titles import set_thread_title
 from app.core.retriever import thread_document_metadata
 from app.memory.sqlite_memory import retrieve_all_threads
 from app.memory.sqlite_memory import get_thread_title_db, save_thread_title
-from app.memory.thread_titles import get_thread_title
-from app.llm.title_generator import generate_chat_title
 
 
 # =========================== GLOBAL UI STYLE ===========================

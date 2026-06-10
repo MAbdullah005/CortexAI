@@ -1,29 +1,23 @@
 from fastapi import APIRouter, UploadFile, File
-from fastapi.responses import StreamingResponse
-from typing import List
 import uuid
 from fastapi import Form
 from fastapi.responses import FileResponse
 from app.services.youtube_loader import extract_video_id
 from app.core.retriever import clear_thread_cache
-import shutil
 import os
 import sqlite3
 from fastapi import UploadFile, File, Form
 from fastapi.responses import FileResponse
 from app.services.youtube_ingest import ingest_youtube
 
-from app.memory.sqlite_memory import save_youtube_url
-from fastapi.responses import Response
 
 
-from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
+from langchain_core.messages import HumanMessage
 
 # Your existing backend imports
 from app.graph.agent_graph import chatbot
-from app.core.ingest import ingest_pdf
+from app.services.pdf_ingest import ingest_pdf
 from app.memory.sqlite_memory import retrieve_all_threads, get_thread_title_db, save_thread_title
-from app.memory.thread_titles import get_thread_title
 from app.llm.title_generator import generate_chat_title
 from langgraph.checkpoint.sqlite import SqliteSaver
 

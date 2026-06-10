@@ -1,7 +1,7 @@
 import os
 from app.services.youtube_loader import load_youtube_transcript
 from app.core.splitter import chunk_text
-from app.core.embeddings import get_embeddings
+from app.llm.embeddings import get_embeddings
 from app.core.vectorstore import create_vector_db
 
 def ingest_youtube(video_id: str, doc_id: str):
