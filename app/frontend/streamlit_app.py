@@ -11,11 +11,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")
 
 from langchain_core.messages import HumanMessage
 
-# Backend imports (kept as requested — no deletions)
-from app.graph.agent_graph import chatbot
-from app.core.retriever import thread_document_metadata
-from app.memory.sqlite_memory import retrieve_all_threads
-from app.memory.sqlite_memory import get_thread_title_db, save_thread_title
+
 
 
 # =========================== GLOBAL UI STYLE ===========================
@@ -31,38 +27,31 @@ div[data-testid="column"] { padding: 0px !important; }
 </style>
 """, unsafe_allow_html=True)
 
-
-# =========================== Utilities ===========================
-
-def generate_thread_id():
-    return str(uuid.uuid4())
-
-
-def reset_chat():
-    thread_id = generate_thread_id()
-    st.session_state["thread_id"] = thread_id
-    st.session_state["message_history"] = []
-    st.session_state["youtube_url"] = None
-    st.session_state["pdf_uploaded"] = False      # ← ADD THIS
-    st.session_state["ingested_docs"][thread_id] = {}  # ← ADD THIS
-    save_thread_title(thread_id, "New Chat")
-    if thread_id not in st.session_state["chat_threads"]:
-        st.session_state["chat_threads"].append(thread_id)
-
-
-def load_conversation(thread_id):
-    state = chatbot.get_state(config={"configurable": {"thread_id": thread_id}})
-    return state.values.get("messages", [])
-
-
 # =========================== API ===========================
 
 API_URL = "http://localhost:8000/chat"
 API_UPLOAD = "http://localhost:8000/upload-pdf"
-API_GET_PDF = "http://localhost:8000/get_pdf"
+API_GET_PDF = "http://localhost:8000/get_pdf/{thread_id}"
 API_SET_YT = "http://localhost:8000/set_youtube"
-API_GET_YT = "http://localhost:8000/get_youtube"
+API_GET_YT = "http://localhost:8000/get_youtube/{thread_id}"
 API_GEN_TITLE = "http://localhost:8000/generate-title"
+API_NEW_THREAD = "http://localhost:8000/new-thread"
+#API_REtrived_all_thread="http://localhost:8000//retrived-all-thread"
+#API_GET_THREAD_TITLE_DB="http://localhost:8000//get-thread-title"
+#API_SET_THREAD_TITLE="http://localhost:8000//save-thread-title"
+
+API_THREADS = "http://localhost:8000/threads"
+
+API_THREAD_DETAILS = "http://localhost:8000/thread/{thread_id}/details"
+
+API_THREAD_DOCS = "http://localhost:8000/thread/{thread_id}/documents"
+
+API_THREAD_SOURCES = "http://localhost:8000/thread/{thread_id}/sources"
+
+
+
+
+# =========================== Utilities ===========================
 
 
 def call_api(user_input, thread_id):
@@ -81,32 +70,32 @@ def call_api(user_input, thread_id):
 if "message_history" not in st.session_state:
     st.session_state["message_history"] = []
 
+if "youtube_url" not in st.session_state:
+    st.session_state["youtube_url"] = None
+
 if "thread_id" not in st.session_state:
-    st.session_state["thread_id"] = generate_thread_id()
+    response = requests.post(API_NEW_THREAD)
+    st.session_state["thread_id"] = response.json()["thread_id"]
 
-if "chat_threads" not in st.session_state:
-    st.session_state["chat_threads"] = retrieve_all_threads()
-
-if "ingested_docs" not in st.session_state:
-    st.session_state["ingested_docs"] = {}
 
 if "pdf_uploaded" not in st.session_state:
     st.session_state["pdf_uploaded"] = False
 
-if "youtube_url" not in st.session_state:
-    try:
-        thread_key = st.session_state["thread_id"]
-        res = requests.get(f"{API_GET_YT}/{thread_key}")
-        if res.status_code == 200:
-            st.session_state["youtube_url"] = res.json().get("youtube_url")
-    except:
-        st.session_state["youtube_url"] = None
+if "youtube_loaded_for" not in st.session_state:
+    st.session_state["youtube_loaded_for"] = None
+
+if "sources" not in st.session_state:
+    st.session_state["sources"] = {}
+
+if "uploaded_file_name" not in st.session_state:
+    st.session_state["uploaded_file_name"] = None
+
 
 thread_key = st.session_state["thread_id"]
-threads = st.session_state["chat_threads"][::-1]
-thread_docs = st.session_state["ingested_docs"].setdefault(thread_key, {})
+
 
 selected_thread = None
+
 
 
 # ============================ Sidebar ============================
@@ -115,8 +104,20 @@ st.sidebar.title("LangGraph Multi-Tool Chatbot")
 st.sidebar.markdown(f"**Thread ID:** `{thread_key[:8]}`")
 
 if st.sidebar.button("New Chat"):
-    reset_chat()
+
+    response = requests.post(API_NEW_THREAD)
+    st.session_state["youtube_url"] = None
+    st.session_state["pdf_uploaded"] = False
+
+    st.session_state["thread_id"] = (
+        response.json()["thread_id"]
+    )
+
+    st.session_state["message_history"] = []
+
     st.rerun()
+
+
 
 if st.sidebar.button("Clear Conversation"):
     st.session_state["message_history"] = []
@@ -126,43 +127,32 @@ st.sidebar.divider()
 
 uploaded_pdf = st.sidebar.file_uploader("Upload PDF", type=["pdf"])
 if uploaded_pdf:
-    # FIX: Key check was "uploaded" but the dict stores by filename — so the
-    # guard never triggered and every Streamlit rerun re-uploaded the file.
-    # Now keyed by filename, which is what's actually stored below.
-    if uploaded_pdf.name not in thread_docs:
-        print("Here is Upload PDF Name ",uploaded_pdf.name)
-        with st.sidebar.status("Uploading & Indexing PDF..."):
-            try:
-                files = {
-                    "file": (uploaded_pdf.name, uploaded_pdf.getvalue(), "application/pdf")
-                }
-                data = {"thread_id": thread_key}
+    if uploaded_pdf.name != st.session_state["uploaded_file_name"]:
 
-                res = requests.post(API_UPLOAD, files=files, data=data)
+        files = {
+         "file": (
+             uploaded_pdf.name,
+             uploaded_pdf.getvalue(),
+             "data/pdf\vectorstores"
+              )
+            }
 
-                if res.status_code == 200:
-                    thread_docs[uploaded_pdf.name] = {
-                        "status": "uploaded",
-                        "filename": uploaded_pdf.name,
-                    }
-                    st.session_state["pdf_uploaded"] = True
-                    st.sidebar.success("✅ PDF uploaded & indexed")
-                else:
-                    st.sidebar.error("❌ Upload failed")
+        data = {
+         "thread_id": st.session_state["thread_id"]
+        }
 
-            except Exception as e:
-                st.sidebar.error(f"❌ Error: {str(e)}")
-    else:
-        print("Here is Upload PDF Name  Already Uploaded",uploaded_pdf.name)
-        st.sidebar.info("PDF already indexed.")
+        res = requests.post(
+        API_UPLOAD,
+        files=files,
+        data=data
+    )
+        
+        if res.status_code == 200:
+          st.session_state["pdf_uploaded"] = True
+    st.session_state["uploaded_file_name"] = uploaded_pdf.name
 
-if thread_docs:
-    latest_doc = list(thread_docs.values())[-1]
-    # FIX: "chunks" and "documents" keys were never set in the dict above —
-    # only "status" and "filename" were stored, so the sidebar always showed
-    # "None chunks | None pages". Removed the missing keys; show only what
-    # we actually have.
-    st.sidebar.success(f"📄 {latest_doc.get('filename')} — uploaded")
+    
+
 
 st.sidebar.divider()
 
@@ -187,10 +177,15 @@ if st.sidebar.button("Load Video"):
 
 st.sidebar.subheader("Past Conversations")
 
-for thread_id in threads:
-    title = get_thread_title_db(thread_id)
-    if st.sidebar.button(title, key=f"thread-{thread_id}"):
-        selected_thread = thread_id
+threads = requests.get(API_THREADS).json()
+
+for thread in threads:
+
+    if st.sidebar.button(
+        thread["title"],
+        key=thread["thread_id"]
+    ):
+        selected_thread = thread["thread_id"]
 
 
 # ============================ MAIN LAYOUT ============================
@@ -222,6 +217,7 @@ with col_chat:
         st.session_state["message_history"].append(
             {"role": "assistant", "content": "⏳ Thinking..."}
         )
+        print("message history before rerun first time ",st.session_state["message_history"])
         st.rerun()
 
     if st.session_state["message_history"]:
@@ -232,28 +228,24 @@ with col_chat:
             print("....Usear Message ....:", user_msg)
             ai_message = call_api(user_msg, thread_key)
             st.session_state["message_history"][-1]["content"] = ai_message
+            print("message history before rerun second  time ",st.session_state["message_history"])
 
-            # FIX: Generate and save title after the FIRST exchange only,
-            # so the sidebar shows a meaningful name instead of "New Chat".
+
+            
             if len(st.session_state["message_history"]) == 2:
                 try:
-                    requests.post(
+                    res_title=requests.post(
                         API_GEN_TITLE,
                         json={"thread_id": thread_key, "message": user_msg}
                     )
+                        
                 except Exception:
                     pass
 
+
             st.rerun()
 
-        # FIX: thread_id was an undefined variable here — the loop variable
-        # from the sidebar `for thread_id in threads` had leaked into this
-        # scope and pointed to the LAST past thread, not the current one.
-        # Changed to thread_key which is always the active thread.
-        doc_meta = thread_document_metadata(thread_key)
-        if doc_meta:
-            for src in doc_meta["sources"]:
-                st.caption(f"{src['type'].upper()}: {src['name']}")
+        
 
 
 # ============================ VIDEO + PDF ============================
@@ -270,7 +262,9 @@ with col_video:
     st.markdown("<div style='margin-top:5px'></div>", unsafe_allow_html=True)
 
     if st.session_state.get("pdf_uploaded"):
-        pdf_url = f"{API_GET_PDF}/{thread_key}"
+        pdf_url = API_GET_PDF.format(
+    thread_id=thread_key
+)
         pdf_html = f"""
         <iframe 
             src="{pdf_url}" 
@@ -287,26 +281,53 @@ with col_video:
 
 
 # ============================ Thread Switch ============================
-
 if selected_thread:
-    st.session_state["thread_id"] = selected_thread
-    st.session_state["pdf_uploaded"] = False
 
+    details = requests.get(
+        f"http://localhost:8000/thread/{selected_thread}/details"
+    ).json()
+
+    st.session_state["thread_id"] = selected_thread
+    thread_key=st.session_state["thread_id"]
+
+    st.session_state["message_history"] = (
+        details["messages"]
+    )
+
+    # --------------------
+    # Load YouTube
+    # --------------------
     try:
-        res = requests.get(f"{API_GET_YT}/{selected_thread}")
-        if res.status_code == 200:
-            st.session_state["youtube_url"] = res.json().get("youtube_url")
+        yt = requests.get(
+            API_GET_YT.format(thread_id=selected_thread)
+        )
+
+        if yt.status_code == 200:
+            data = yt.json()
+
+            if data["youtube_url"]:
+                st.session_state["youtube_url"] = (
+                    data["youtube_url"][0]
+                )
+            else:
+                st.session_state["youtube_url"] = None
     except:
         st.session_state["youtube_url"] = None
 
-    messages = load_conversation(selected_thread)
+    # --------------------
+    # Load PDF state
+    # --------------------
+    docs = requests.get(
+        API_THREAD_DOCS.format(
+            thread_id=selected_thread
+        )
+    ).json()
 
-    temp_messages = []
-    for msg in messages:
-        role = "user" if isinstance(msg, HumanMessage) else "assistant"
-        temp_messages.append({"role": role, "content": msg.content})
+    st.session_state["pdf_uploaded"] = any(
+        doc["type"] == "pdf"
+        for doc in docs["documents"]
+    )
 
-    st.session_state["message_history"] = temp_messages
     st.rerun()
 
 

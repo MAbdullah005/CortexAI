@@ -1,4 +1,4 @@
-from app.llm.llm_config import llm
+from app.llm.llm_config import gen_title
 
 TITLE_PROMPT = """
 You are generating a short chat title.
@@ -19,7 +19,7 @@ Title:
 
 def generate_chat_title(message: str) -> str:
     prompt = TITLE_PROMPT.format(message=message)
-    response = llm.invoke(prompt)
+    response = gen_title.invoke(prompt)
     title = response.content.strip()
     title = title.replace("Title:", "").strip()
     return title

@@ -14,12 +14,18 @@ from app.services.youtube_ingest import ingest_youtube
 
 from langchain_core.messages import HumanMessage
 
-# Your existing backend imports
+# Your existing bacsskend imports
+from typing import List
+from app.utils.logger import get_logger
+from app.core.retriever import thread_document_metadata
 from app.graph.agent_graph import chatbot
 from app.services.pdf_ingest import ingest_pdf
+from app.utils.common import extract_ai_text
 from app.memory.sqlite_memory import retrieve_all_threads, get_thread_title_db, save_thread_title
 from app.llm.title_generator import generate_chat_title
 from langgraph.checkpoint.sqlite import SqliteSaver
+
+logger = get_logger(__name__)
 
 router = APIRouter()
 
@@ -32,26 +38,34 @@ checkpointer = SqliteSaver(conn=conn)
 
 
 # ========================= Chat Endpoint =========================
-
 @router.post("/chat")
 async def chat_endpoint(data: dict):
+
     user_input = data["message"]
     thread_id = data["thread_id"]
 
     CONFIG = {
-        "configurable": {"thread_id": thread_id},
+        "configurable": {
+            "thread_id": thread_id
+        },
         "run_name": "chat_turn",
     }
 
     response = chatbot.invoke(
-        {"messages": [HumanMessage(content=user_input)]},
+        {
+            "messages": [
+                HumanMessage(content=user_input)
+            ]
+        },
         config=CONFIG,
     )
 
-    return {
-        "response": response["messages"][-1].content
-    }
+    ai_response = extract_ai_text(response["messages"][-1])
 
+    return {
+        "thread_id": thread_id,
+        "response": ai_response
+    }
 
 
 # ========================= Threads =========================
@@ -70,32 +84,57 @@ def get_threads():
     return result
 
 
+# GENErate thread title
+@router.post('get-thread-title')
+def get_thread_title_db(thread_id: str) -> str:
+    try:
+        cursor = conn.cursor()
+
+        cursor.execute("""
+        SELECT title FROM threads WHERE thread_id=?
+        """, (thread_id,))
+
+        row = cursor.fetchone()
+
+        if row and row[0]:
+            return row[0]
+
+        return f"Chat {thread_id[:6]}"
+
+    except Exception as e:
+        logger.error(f"Failed to get thread title: {str(e)}")
+        return f"Chat {thread_id[:6]}"
+
+
+# save thread title 
+
+@router.post('save-thread-title')
+def save_thread_title_api(thread_id: str, title: str):
+    try:
+        cursor = conn.cursor()
+
+        cursor.execute("""
+        INSERT INTO threads (thread_id, title)
+        VALUES (?, ?)
+        ON CONFLICT(thread_id)
+        DO UPDATE SET title=excluded.title
+        """, (thread_id, title))
+
+        conn.commit()
+
+    except Exception as e:
+        logger.error(f"Failed to save thread title: {str(e)}")
+
+
+
+
 # ========================= New Thread =========================
 
 @router.post("/new-thread")
 def new_thread():
     thread_id = str(uuid.uuid4())
-    save_thread_title(thread_id, "New Chat")
+   # save_thread_title(thread_id, "New Chat")
     return {"thread_id": thread_id}
-
-
-# ========================= Get Conversation =========================
-
-@router.get("/thread/{thread_id}")
-def get_thread(thread_id: str):
-    state = chatbot.get_state(config={"configurable": {"thread_id": thread_id}})
-    messages = state.values.get("messages", [])
-
-    formatted = []
-    for msg in messages:
-        role = "user" if isinstance(msg, HumanMessage) else "assistant"
-        formatted.append({
-            "role": role,
-            "content": msg.content
-        })
-
-    return formatted
-
 
 # ========================= Title Generation =========================
 
@@ -108,6 +147,7 @@ def generate_title(data: dict):
     save_thread_title(thread_id, title)
 
     return {"title": title}
+
 
 @router.post("/set_youtube")
 def set_youtube(data: dict):
@@ -125,7 +165,7 @@ def set_youtube(data: dict):
     cursor.execute("SELECT doc_id FROM documents WHERE content_hash=?", (doc_hash,))
     row = cursor.fetchone()
 
-    if row is not None:
+    if row:
         doc_id = row[0]
         print("....Video already parsent in vertor store ...")
         cursor.execute("""
@@ -136,7 +176,7 @@ def set_youtube(data: dict):
         conn.commit()
         clear_thread_cache(thread_id)
 
-        return {"status": "reused", "Youtube_video_id": doc_id}
+        return {"status": "ok"}
         
     else:
         import uuid
@@ -162,32 +202,11 @@ def set_youtube(data: dict):
     return {"status": "ok"}
 
 
-@router.get("/get_youtube/{thread_id}")
-def get_youtube(thread_id: str):
-    cursor = conn.cursor()
-
-    cursor.execute("""
-    SELECT source FROM documents
-    JOIN thread_documents USING(doc_id)
-    WHERE thread_id=? AND type='youtube'
-    """, (thread_id,))
-
-    row = cursor.fetchone()
-
-    if row:
-        video_id = row[0]
-
-        # Convert back to full URL
-        youtube_url = f"https://www.youtube.com/watch?v={video_id}"
-
-        return {"youtube_url": youtube_url}
-
-    return {"youtube_url": None}
-
-
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
 UPLOAD_DIR = os.path.join(BASE_DIR, "uploaded_pdfs")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+
 
 @router.post("/upload-pdf")
 async def upload_pdf(
@@ -250,6 +269,142 @@ async def upload_pdf(
 
     return {"status": "new", "doc_id": doc_id}
 
+
+
+
+
+
+@router.get("/thread/{thread_id}/documents")
+def get_thread_documents(thread_id: str):
+
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    SELECT
+        doc_id,
+        type,
+        source,
+        created_at
+    FROM documents
+    JOIN thread_documents USING(doc_id)
+    WHERE thread_id=?
+    ORDER BY created_at DESC
+    """, (thread_id,))
+
+    rows = cursor.fetchall()
+
+    documents = []
+
+    for row in rows:
+        documents.append(
+            {
+                "doc_id": row[0],
+                "type": row[1],
+                "source": row[2],
+                "created_at": row[3]
+            }
+        )
+
+    return {
+        "thread_id": thread_id,
+        "documents": documents
+    }
+
+
+
+
+
+@router.get("/thread/{thread_id}/details")
+def get_thread_details(thread_id: str):
+
+    # -------------------------
+    # title
+    # -------------------------
+
+    title = get_thread_title_db(thread_id)
+
+    # -------------------------
+    # messages
+    # -------------------------
+
+    state = chatbot.get_state(
+        config={
+            "configurable": {
+                "thread_id": thread_id
+            }
+        }
+    )
+
+    messages = state.values.get("messages", [])
+
+    formatted_messages = []
+
+    for msg in messages:
+
+        role = (
+            "user"
+            if isinstance(msg, HumanMessage)
+            else "assistant"
+        )
+
+        formatted_messages.append(
+            {
+                "role": role,
+                "content": msg.content
+            }
+        )
+
+    # -------------------------
+    # documents
+    # -------------------------
+
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    SELECT
+        doc_id,
+        type,
+        source
+    FROM documents
+    JOIN thread_documents USING(doc_id)
+    WHERE thread_id=?
+    """, (thread_id,))
+
+    rows = cursor.fetchall()
+
+    documents = []
+
+    for row in rows:
+
+        doc = {
+            "doc_id": row[0],
+            "type": row[1],
+            "source": row[2]
+        }
+
+        documents.append(doc)
+
+    return {
+        "thread_id": thread_id,
+        "title": title,
+        "messages": formatted_messages,
+        "documents": documents
+    }
+
+
+
+@router.get("/thread/{thread_id}/sources")
+def get_thread_sources(thread_id: str):
+
+    return thread_document_metadata(thread_id)
+
+
+
+
+
+
+#''''''''''''''''''
+
 @router.get("/get_pdf/{thread_id}")
 def get_pdf(thread_id: str):
     cursor = conn.cursor()
@@ -260,12 +415,67 @@ def get_pdf(thread_id: str):
     WHERE thread_id=? AND type='pdf'
     """, (thread_id,))
 
-    row = cursor.fetchone()
 
-    if row:
-        file_path = row[0]
+    rows = cursor.fetchall()
 
-        if os.path.exists(file_path):
-            return FileResponse(file_path, media_type="application/pdf")
+    if rows:
+      file_path = rows[0][0]
+      print("here is pdf that system get path and not show ",file_path)
+
+      if os.path.exists(file_path):
+         return FileResponse(
+             file_path,
+             media_type="application/pdf"
+         )
 
     return {"error": "No PDF found"}
+
+
+
+
+
+@router.get("/get_youtube/{thread_id}")
+def get_youtube(thread_id: str):
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    SELECT source FROM documents
+    JOIN thread_documents USING(doc_id)
+    WHERE thread_id=? AND type='youtube'
+    """, (thread_id,))
+
+    row = cursor.fetchall()
+
+
+    if row:
+        videos = [
+    f"https://www.youtube.com/watch?v={r[0]}"
+    for r in row
+]
+
+        return {"youtube_url": videos}
+
+    return {"youtube_url": None}
+
+
+
+
+
+
+# ========================= Get Conversation =========================
+
+"""@router.get("/thread/{thread_id}")
+def get_thread(thread_id: str):
+    state = chatbot.get_state(config={"configurable": {"thread_id": thread_id}})
+    messages = state.values.get("messages", [])
+
+    formatted = []
+    for msg in messages:
+        role = "user" if isinstance(msg, HumanMessage) else "assistant"
+        formatted.append({
+            "role": role,
+            "content": msg.content
+        })
+
+    return formatted
+"""

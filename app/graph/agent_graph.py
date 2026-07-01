@@ -26,32 +26,6 @@ from app.utils.logger import get_logger
 logger = get_logger(__name__)
 
 
-# =========================================
-# State
-# =========================================
-
-
-
-
-# =========================================
-# Router
-# =========================================
-
-def route_after_planner(state: ChatState):
-    """
-    Decide next step after planner
-    """
-
-    if state.get("tool_call"):
-        return "tool_executor"
-
-    return END
-
-
-# =========================================
-# Graph
-# =========================================
-
 graph = StateGraph(ChatState)
 
 graph.add_node("chat_node", chat_node)

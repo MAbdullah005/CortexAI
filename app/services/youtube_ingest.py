@@ -23,7 +23,7 @@ def ingest_youtube(video_id: str, doc_id: str):
     vectorstore = create_vector_db(docs, embeddings=embeddings)
 
     # 🔥 SAVE FAISS
-    save_path = os.path.join("data/yt/vectorstores", doc_id)
+    save_path = os.path.join("data/yt/vectorstores/", doc_id)
     os.makedirs(save_path, exist_ok=True)
 
     vectorstore.save_local(save_path)

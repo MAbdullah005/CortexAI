@@ -56,7 +56,7 @@ def ingest_pdf(file_bytes: bytes, filename: Optional[str], doc_id: str) -> str:
         vector_store = FAISS.from_documents(chunks, embeddings)
 
         # 🔥 SAVE VECTORSTORE
-        save_path = os.path.join(f"data/pdf/vectorstores", doc_id)
+        save_path = os.path.join(f"data/pdf/vectorstores/", doc_id)
         os.makedirs(save_path, exist_ok=True)
 
         vector_store.save_local(save_path)

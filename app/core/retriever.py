@@ -17,29 +17,42 @@ _THREAD_CACHE: Dict[str, Any] = {}
 # ==============================
 # MAIN RETRIEVER (FINAL VERSION)a
 # ==============================
-def get_thread_retriever(thread_id: str):
+def get_thread_retriever(thread_id: str,source_type:str |None= None):
     """
     Load and merge all vectorstores linked to a thread
     """
 
+    cache_key = f"{thread_id}:{source_type}"
+
     # ✅ 1. Check cache
-    if thread_id in _THREAD_CACHE:
-        return _THREAD_CACHE[thread_id]
+    if cache_key in _THREAD_CACHE:
+      return _THREAD_CACHE[cache_key]
 
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
-    cursor.execute("""
-    SELECT vectorstore_path FROM documents
+    if source_type:
+      cursor.execute("""
+    SELECT vectorstore_path
+    FROM documents
+    JOIN thread_documents USING(doc_id)
+    WHERE thread_id=?
+    AND type=?
+    """, (thread_id, source_type))
+    else:
+       cursor.execute("""
+    SELECT vectorstore_path
+    FROM documents
     JOIN thread_documents USING(doc_id)
     WHERE thread_id=?
     """, (thread_id,))
 
     rows = cursor.fetchall()
-    print("here is row that is feacth fom db ",rows)
+    print("here is vector store paths that is feacth fom db ",rows)
     print("THREAD ID:", thread_id)
     print("DB ROWS:", rows)
     conn.close()
+
 
     if not rows:
         return None
@@ -70,7 +83,7 @@ def get_thread_retriever(thread_id: str):
     retriever = SmartRetriever(vectorstores)
 
     # ✅ 4. Cache it
-    _THREAD_CACHE[thread_id] = retriever
+    _THREAD_CACHE[cache_key] = retriever
 
 
     return retriever
@@ -109,11 +122,16 @@ def thread_has_document(thread_id: str) -> bool:
 
 
 def clear_thread_cache(thread_id: str):
-    """
-    Clear cache when new document is added
-    """
-    if thread_id in _THREAD_CACHE:
-        del _THREAD_CACHE[thread_id]
+
+    keys_to_delete = [
+        key
+        for key in _THREAD_CACHE
+        if key.startswith(f"{thread_id}:")
+    ]
+
+    for key in keys_to_delete:
+        del _THREAD_CACHE[key]
+        
 
 
 def thread_document_metadata(thread_id: str) -> dict:
@@ -121,6 +139,9 @@ def thread_document_metadata(thread_id: str) -> dict:
     Get metadata for all documents linked to a thread
     """
 
+    if len(thread_id)==0:
+        return None
+    
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
@@ -150,6 +171,9 @@ def thread_document_metadata(thread_id: str) -> dict:
             "name": name
         })
 
+     
+    print("here meta data get from db ",source, "and here is its length ",len(source))
+
     return {
         "total_docs": len(sources),
         "sources": sources
@@ -167,7 +191,8 @@ class SmartRetriever:
 
         for vs in stores:
             try:
-                docs = vs.similarity_search("", k=1000)
+              #  docs = vs.similarity_search("", k=1000)
+                docs = list(vs.docstore._dict.values())
 
                 self.all_documents.extend(docs)
 
@@ -181,7 +206,12 @@ class SmartRetriever:
         ]
 
         # 🔥 BM25 INDEX
-        self.bm25 = BM25Okapi(self.bm25_docs)
+
+        # Build BM25 only if documents exist  
+        if len(self.bm25_docs) > 0:
+           self.bm25 = BM25Okapi(self.bm25_docs)
+        else:
+           self.bm25 = None
 
     def invoke(self, query):
 
@@ -210,20 +240,21 @@ class SmartRetriever:
         # =========================================
 
         tokenized_query = query.split()
+        if self.bm25:
 
-        bm25_scores = self.bm25.get_scores(tokenized_query)
+          bm25_scores = self.bm25.get_scores(tokenized_query)
 
-        scored_docs = list(zip(self.all_documents, bm25_scores))
+          scored_docs = list(zip(self.all_documents, bm25_scores))
 
-        scored_docs.sort(key=lambda x: x[1], reverse=True)
+          scored_docs.sort(key=lambda x: x[1], reverse=True)
 
-        top_sparse = scored_docs[:4]
+          top_sparse = scored_docs[:4]
 
-        for doc, score in top_sparse:
-
-            doc.metadata["bm25_score"] = float(score)
-
-            sparse_results.append(doc)
+          for doc, score in top_sparse:
+  
+              doc.metadata["bm25_score"] = float(score)
+  
+              sparse_results.append(doc)
 
         # =========================================
         # 3. MERGE RESULTS
@@ -241,6 +272,9 @@ class SmartRetriever:
         for doc in combined:
 
             content = doc.page_content.strip()
+
+            if not content:
+                continue
 
             if content not in seen:
 

@@ -1,15 +1,4 @@
 
-"""
-Python Execution Tool
-
-Allows the AI agent to execute small Python code snippets and return
-the output. Useful for calculations, data analysis, quick scripting,
-and reasoning tasks.
-
-⚠️ WARNING:
-This should only run in a controlled environment. Do NOT expose this
-directly in public production without sandboxing (Docker / restricted env).
-"""
 
 import io
 import contextlib

@@ -8,6 +8,10 @@ langchain_ollama
 langchain_openai
 langgraph-checkpoint-sqlite
 langchain-text-splitters
+uvicorn[standard]
 langchain_community
+langchain_core
 rank-bm25
-rank_bm25
+langchain-tavily
+langchain_google_genai 
+python-multipart

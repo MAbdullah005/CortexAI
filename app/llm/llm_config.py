@@ -1,15 +1,10 @@
 
-"""
-LLM Configuration
-
-Central place for initializing LLMs and embeddings used in the project.
-Supports easy switching between local (Ollama) and cloud models.
-"""
-
+import os
 from dotenv import load_dotenv
 
 from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 from app.utils.logger import get_logger
 
@@ -17,69 +12,98 @@ load_dotenv()
 
 logger = get_logger(__name__)
 
-# ================================
-# Model Settingas
-# ================================
 
 DEFAULT_LOCAL_MODEL = "qwen2.5:3b"
-DEFAULT_LOCAL_MODEL_title="qwen2.5:0.5b"
+DEFAULT_LOCAL_MODEL_title = "qwen2.5:0.5b"
+
+DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
+DEFAULT_OPENAI_MODEL = "gpt-4o-mini"
 
 DEFAULT_TEMPERATURE = 0.2
 
-USE_OPENAI = False   # Change to True if you want OpenAI
+USE_OPENAI = False   # optional manual override
 
 
-# ================================
-# LLM Loader
-# ================================
+
+def gemini_available():
+    return os.getenv("Gemini_API_Key") is not None
+
+
+def openai_available():
+    return os.getenv("OPENAI_API_KEY") is not None
+
+
 
 def load_llm():
-    """
-    Load the main language model.
-    """
 
-    if USE_OPENAI:
 
-        logger.info("Loading OpenAI LLM")
+    if gemini_available():
+        try:
+            logger.info("Loading Gemini LLM")
 
-        return ChatOpenAI(
-            model="gpt-4o-mini",
-            temperature=DEFAULT_TEMPERATURE
-        )
+            return ChatGoogleGenerativeAI(
+                model=DEFAULT_GEMINI_MODEL,
+                temperature=DEFAULT_TEMPERATURE
+            )
 
-    else:
+        except Exception as e:
+            logger.warning(f"Gemini failed, falling back... {e}")
 
-        logger.info(f"Loading Ollama model: {DEFAULT_LOCAL_MODEL}")
+    if USE_OPENAI and openai_available():
+        try:
+            logger.info("Loading OpenAI LLM")
 
-        return ChatOllama(
-            model=DEFAULT_LOCAL_MODEL,
-            temperature=DEFAULT_TEMPERATURE,
-            keep_alive=-1
-        )
-    
+            return ChatOpenAI(
+                model=DEFAULT_OPENAI_MODEL,
+                temperature=DEFAULT_TEMPERATURE
+            )
+
+        except Exception as e:
+            logger.warning(f"OpenAI failed, falling back... {e}")
+
+    logger.info(f"Loading Ollama model: {DEFAULT_LOCAL_MODEL}")
+
+    return ChatOllama(
+        model=DEFAULT_LOCAL_MODEL,
+        temperature=DEFAULT_TEMPERATURE,
+        keep_alive=-1
+    )
+
 
 def generate_title_llm():
 
-    if USE_OPENAI:
+    # Gemini for title generation
+    if gemini_available():
+        try:
+            logger.info("Loading Gemini Title LLM")
 
-        logger.info("Loading OpenAI LLM")
+            return ChatGoogleGenerativeAI(
+                model=DEFAULT_GEMINI_MODEL,
+                temperature=0.3
+            )
+
+        except Exception as e:
+            logger.warning(f"Gemini title failed: {e}")
+
+    # OpenAI fallback
+    if USE_OPENAI and openai_available():
+        logger.info("Loading OpenAI Title LLM")
 
         return ChatOpenAI(
-            model="gpt-4o-mini",
-            temperature=DEFAULT_TEMPERATURE
+            model=DEFAULT_OPENAI_MODEL,
+            temperature=0.3
         )
 
-    else:
+    # Ollama fallback
+    logger.info(f"Loading Ollama title model: {DEFAULT_LOCAL_MODEL_title}")
 
-        logger.info(f"Loading Ollama model: {DEFAULT_LOCAL_MODEL_title}")
-
-        return ChatOllama(
-            model=DEFAULT_LOCAL_MODEL_title,
-            temperature=DEFAULT_TEMPERATURE,
-            keep_alive=-1
-        )
+    return ChatOllama(
+        model=DEFAULT_LOCAL_MODEL_title,
+        temperature=0.3,
+        keep_alive=-1
+    )
 
 
 
 llm = load_llm()
-
+gen_title = generate_title_llm()
