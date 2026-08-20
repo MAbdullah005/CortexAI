@@ -517,3 +517,35 @@
 2026-08-19 20:13:30,266 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
 2026-08-19 20:13:31,163 | INFO | req:N/A | app.llm.llm_config | Loading Gemini LLM
 2026-08-19 20:13:33,444 | INFO | req:N/A | app.llm.llm_config | Loading Gemini Title LLM
+2026-08-20 23:32:38,972 | INFO | req:N/A | app.llm.embeddings | Loading Google Embeddings
+2026-08-20 23:32:40,472 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-08-20 23:32:41,446 | INFO | req:N/A | app.llm.llm_config | Loading Gemini LLM
+2026-08-20 23:32:43,102 | INFO | req:N/A | app.llm.llm_config | Loading Gemini Title LLM
+2026-08-20 23:33:12,500 | INFO | req:N/A | app.llm.embeddings | Loading Google Embeddings
+2026-08-20 23:33:13,799 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-08-20 23:33:14,198 | INFO | req:N/A | app.llm.llm_config | Loading Gemini LLM
+2026-08-20 23:33:15,666 | INFO | req:N/A | app.llm.llm_config | Loading Gemini Title LLM
+2026-08-20 23:36:48,453 | INFO | req:N/A | app.llm.embeddings | Loading Google Embeddings
+2026-08-20 23:36:49,728 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-08-20 23:36:50,021 | INFO | req:N/A | app.llm.llm_config | Loading Gemini LLM
+2026-08-20 23:36:51,421 | INFO | req:N/A | app.llm.llm_config | Loading Gemini Title LLM
+2026-08-20 23:38:11,195 | INFO | req:N/A | app.llm.embeddings | Loading Google Embeddings
+2026-08-20 23:38:12,501 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-08-20 23:38:12,901 | INFO | req:N/A | app.llm.llm_config | Loading Gemini LLM
+2026-08-20 23:38:14,335 | INFO | req:N/A | app.llm.llm_config | Loading Gemini Title LLM
+2026-08-20 23:38:22,457 | INFO | req:N/A | app.llm.embeddings | Loading Google Embeddings
+2026-08-20 23:38:23,735 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-08-20 23:38:24,051 | INFO | req:N/A | app.llm.llm_config | Loading Gemini LLM
+2026-08-20 23:38:25,285 | INFO | req:N/A | app.llm.llm_config | Loading Gemini Title LLM
+2026-08-20 23:51:39,557 | INFO | req:N/A | app.llm.embeddings | Loading Google Embeddings
+2026-08-20 23:51:41,297 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-08-20 23:51:41,731 | INFO | req:N/A | app.llm.llm_config | Loading Gemini LLM
+2026-08-20 23:51:43,161 | INFO | req:N/A | app.llm.llm_config | Loading Gemini Title LLM
+2026-08-20 23:51:51,386 | INFO | req:N/A | app.llm.embeddings | Loading Google Embeddings
+2026-08-20 23:51:52,854 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-08-20 23:51:53,185 | INFO | req:N/A | app.llm.llm_config | Loading Gemini LLM
+2026-08-20 23:51:54,699 | INFO | req:N/A | app.llm.llm_config | Loading Gemini Title LLM
+2026-08-20 23:52:33,154 | INFO | req:N/A | app.llm.embeddings | Loading Google Embeddings
+2026-08-20 23:52:34,677 | INFO | req:N/A | app.memory.sqlite_memory | SQLite memory initialized | db=database\chatbot_conv.db
+2026-08-20 23:52:34,999 | INFO | req:N/A | app.llm.llm_config | Loading Gemini LLM
+2026-08-20 23:52:36,566 | INFO | req:N/A | app.llm.llm_config | Loading Gemini Title LLM

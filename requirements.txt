@@ -12,7 +12,9 @@ uvicorn[standard]
 langchain_community
 langchain_core
 rank-bm25
+jose
 pypdf
+fastapi_mail
 langchain-tavily
 langchain_google_genai 
 python-multipart
