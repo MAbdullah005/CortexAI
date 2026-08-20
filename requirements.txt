@@ -12,6 +12,8 @@ uvicorn[standard]
 langchain_community
 langchain_core
 rank-bm25
+pypdf
 langchain-tavily
 langchain_google_genai 
 python-multipart
+google-api-core

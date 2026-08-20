@@ -21,8 +21,10 @@ from app.core.retriever import thread_document_metadata
 from app.graph.agent_graph import chatbot
 from app.services.pdf_ingest import ingest_pdf
 from app.utils.common import extract_ai_text
-from app.memory.sqlite_memory import retrieve_all_threads, get_thread_title_db, save_thread_title
+from datetime import datetime
+from app.memory.sqlite_memory import  get_thread_title_db, save_thread_title
 from app.llm.title_generator import generate_chat_title
+from app.core.retriever import retrieve_all_threads
 from langgraph.checkpoint.sqlite import SqliteSaver
 
 logger = get_logger(__name__)
@@ -136,15 +138,17 @@ def new_thread():
    # save_thread_title(thread_id, "New Chat")
     return {"thread_id": thread_id}
 
+
 # ========================= Title Generation =========================
 
 @router.post("/generate-title")
 def generate_title(data: dict):
     thread_id = data["thread_id"]
     message = data["message"]
+    user_id1=data["user_id"]
 
     title = generate_chat_title(message)
-    save_thread_title(thread_id, title)
+    save_thread_title(thread_id,user_id1,title)
 
     return {"title": title}
 
@@ -456,6 +460,43 @@ def get_youtube(thread_id: str):
         return {"youtube_url": videos}
 
     return {"youtube_url": None}
+
+
+@router.post("/create-default-user")
+def get_or_create_default_user():
+    try:
+      # 1. Create the cursor without a 'with' block
+      cursor = conn.cursor()
+    
+      # Try to find the default test user
+      cursor.execute("SELECT user_id FROM users WHERE email = 'testuser@local.com'")
+      row = cursor.fetchone()
+    
+      if row:
+          cursor.close() # Clean up the cursor
+          return {"user_id": row[0]} # Return existing user_id
+    
+      created_at = datetime.now()
+    
+      # 2. If missing, create the default user (Fixed syntax and tuple placement)
+      cursor.execute("""
+          INSERT INTO users (email, password_hash, is_verified, created_at) 
+          VALUES (?, ?, ?, ?)
+      """, ('testuser@local.com', 'no_auth_placeholder', 1, created_at))
+    
+      conn.commit()
+    
+      # 3. Return the newly generated ID
+      user_id = cursor.lastrowid
+      print("here is tha user id get as dummy email result ,user_id: ", user_id)
+    
+      cursor.close() # Clean up the cursor
+      return {"user_id": user_id}
+        
+    except Exception as e:
+      conn.rollback()
+      logger.error(f"Failed to manage default user: {str(e)}")
+      return {"user_id": 1} # Fallback dict structure to match successful returns
 
 
 

@@ -2,16 +2,16 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from datetime import datetime
 
-from backend.auth.schemas import SignupRequest, SignupResponse
-from backend.auth.schemas import LoginRequest, LoginResponse
-from backend.auth.security import hash_password, verify_password
-from backend.auth.jwt_utils import create_access_token
-from backend.db.deps import get_db
-from backend.models.users import User
-from backend.models.password_reset import PasswordReset
-from backend.models.email_verification import EmailVerification
-from backend.auth.token_utils import generate_token, hash_token
-from backend.auth.email import send_verification_email, send_reset_email, get_current_user
+from app.auth.schemas import SignupRequest, SignupResponse
+from app.auth.schemas import LoginRequest, LoginResponse
+from app.auth.security import hash_password, verify_password
+from app.auth.jwt_utils import create_access_token
+from app.db.deps import get_db
+from app.models.users import User
+from app.models.password_reset import PasswordReset
+from app.models.email_verification import EmailVerification
+from app.auth.token_utils import generate_token, hash_token
+from app.auth.email import send_verification_email, send_reset_email, get_current_user
 
 # ✅ NO PREFIX HERE
 router = APIRouter(tags=["Auth"])

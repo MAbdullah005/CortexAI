@@ -36,6 +36,7 @@ API_SET_YT = "http://localhost:8000/set_youtube"
 API_GET_YT = "http://localhost:8000/get_youtube/{thread_id}"
 API_GEN_TITLE = "http://localhost:8000/generate-title"
 API_NEW_THREAD = "http://localhost:8000/new-thread"
+API_NEW_USER_add = "http://localhost:8000/create-default-user"
 #API_REtrived_all_thread="http://localhost:8000//retrived-all-thread"
 #API_GET_THREAD_TITLE_DB="http://localhost:8000//get-thread-title"
 #API_SET_THREAD_TITLE="http://localhost:8000//save-thread-title"
@@ -78,6 +79,11 @@ if "thread_id" not in st.session_state:
     st.session_state["thread_id"] = response.json()["thread_id"]
 
 
+if "user_id" not in st.session_state:
+    response=requests.post(API_NEW_USER_add)
+    st.session_state["user_id"]=response.json()["user_id"]
+
+
 if "pdf_uploaded" not in st.session_state:
     st.session_state["pdf_uploaded"] = False
 
@@ -92,6 +98,7 @@ if "uploaded_file_name" not in st.session_state:
 
 
 thread_key = st.session_state["thread_id"]
+user_id=st.session_state["user_id"]
 
 
 selected_thread = None
@@ -236,7 +243,7 @@ with col_chat:
                 try:
                     res_title=requests.post(
                         API_GEN_TITLE,
-                        json={"thread_id": thread_key, "message": user_msg}
+                        json={"thread_id": thread_key,"user_id":user_id,"message": user_msg,}
                     )
                         
                 except Exception:

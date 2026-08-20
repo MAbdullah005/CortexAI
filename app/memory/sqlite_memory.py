@@ -27,6 +27,7 @@ DB_PATH = os.path.join(DB_DIR, "chatbot_conv.db")
 os.makedirs(DB_DIR, exist_ok=True)
 
 conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+conn.execute("PRAGMA foreign_keys = ON")
 
 checkpointer = SqliteSaver(conn=conn)
 
@@ -36,12 +37,25 @@ logger.info(f"SQLite memory initialized | db={DB_PATH}")
 def init_db():
     cursor = conn.cursor()
 
+    #user 
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS users (
+     user_id INTEGER PRIMARY KEY AUTOINCREMENT,
+     email TEXT UNIQUE NOT NULL,
+     password_hash TEXT NOT NULL,
+     is_verified BOOLEAN DEFAULT 0,
+     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    """)
+
     # THREADS
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS threads (
         thread_id TEXT PRIMARY KEY,
+        user_id INTEGER,
         title TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(user_id) REFERENCES users(user_id)
     )
     """)
 
@@ -49,11 +63,13 @@ def init_db():
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS documents (
         doc_id TEXT PRIMARY KEY,
+        user_id INTEGER,
         type TEXT,
         content_hash TEXT UNIQUE,
         source TEXT,
         vectorstore_path TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(user_id) REFERENCES users(user_id)
     )
     """)
 
@@ -62,7 +78,18 @@ def init_db():
     CREATE TABLE IF NOT EXISTS thread_documents (
         thread_id TEXT,
         doc_id TEXT,
-        PRIMARY KEY (thread_id, doc_id)
+        PRIMARY KEY (thread_id, doc_id),
+        FOREIGN KEY(thread_id) REFERENCES threads(thread_id),
+        FOREIGN KEY(doc_id) REFERENCES documents(doc_id)
+    )
+    """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS thread_context (
+        thread_id TEXT PRIMARY KEY,
+        youtube_url TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(thread_id) REFERENCES threads(thread_id)
     )
     """)
 
@@ -73,7 +100,7 @@ def init_db():
 # Thread Utilities
 # ================================
 
-def retrieve_all_threads() -> List[str]:
+def retrieve_all_threads(user_id:int) -> List[str]:
     """
     Retrieve all stored conversation thread IDs.
 
@@ -88,7 +115,7 @@ def retrieve_all_threads() -> List[str]:
     try:
 
       cursor = conn.cursor()
-      cursor.execute("SELECT thread_id FROM threads ORDER BY created_at DESC")
+      cursor.execute(f"SELECT thread_id FROM threads WHERE user_id={user_id} ORDER BY created_at DESC")
       rows = cursor.fetchall()
 
       return [row[0] for row in rows]
@@ -115,26 +142,12 @@ def thread_exists(thread_id: str) -> bool:
         return False
 
     except Exception as e:
-
+        conn.rollback()
         logger.error(f"Thread existence check failed: {str(e)}")
 
         return False
 
-def init_thread_table():
-    cursor = conn.cursor()
 
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS threads (
-        thread_id TEXT PRIMARY KEY,
-        title TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-    """)
-
-    conn.commit()
-
-
-init_thread_table()
 
 
 
@@ -158,16 +171,16 @@ def get_thread_title_db(thread_id: str) -> str:
         return f"Chat {thread_id[:6]}"
 
 
-def save_thread_title(thread_id: str, title: str):
+def save_thread_title(thread_id: str,user_id:int, title: str):
     try:
         cursor = conn.cursor()
 
         cursor.execute("""
-        INSERT INTO threads (thread_id, title)
-        VALUES (?, ?)
+        INSERT INTO threads (thread_id,user_id,title)
+        VALUES (?, ?,?)
         ON CONFLICT(thread_id)
         DO UPDATE SET title=excluded.title
-        """, (thread_id, title))
+        """, (thread_id,user_id, title))
 
         conn.commit()
 
@@ -175,21 +188,6 @@ def save_thread_title(thread_id: str, title: str):
         logger.error(f"Failed to save thread title: {str(e)}")
 
 
-def init_thread_context_table():
-    cursor=conn.cursor()
-    
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS thread_context (
-        thread_id TEXT PRIMARY KEY,
-        youtube_url TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY(thread_id) REFERENCES threads(thread_id)
-    )
-    """)
-
-    conn.commit()
-
-init_thread_context_table()
 
 
 def save_youtube_url(thread_id: str, youtube_url: str):
