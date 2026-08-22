@@ -52,7 +52,7 @@ def init_db():
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS threads (
         thread_id TEXT PRIMARY KEY,
-        user_id INTEGER,
+        user_id INTEGER NOT NULL,
         title TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(user_id) REFERENCES users(user_id)
@@ -61,18 +61,20 @@ def init_db():
 
     # 🔥 DOCUMENTS TABLE (MISSING)
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS documents (
-        doc_id TEXT PRIMARY KEY,
-        user_id INTEGER,
-        type TEXT,
-        content_hash TEXT UNIQUE,
-        source TEXT,
-        vectorstore_path TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY(user_id) REFERENCES users(user_id)
-    )
-    """)
+    CREATE TABLE IF NOT EXISTS  documents (
+    doc_id TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    type TEXT,
+    content_hash TEXT NOT NULL,
+    source TEXT,
+    vectorstore_path TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
+    FOREIGN KEY(user_id)
+        REFERENCES users(user_id)
+)
+"""
+)
     # 🔥 RELATION TABLE (MISSING)
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS thread_documents (

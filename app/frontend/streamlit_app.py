@@ -2,6 +2,9 @@ import os
 import sys
 import uuid
 import json
+from app.utils.common import auth_headers
+from app.frontend.login import login_page
+from app.frontend.signup import signup_page
 import streamlit as st
 import requests
 # video url 1 :https://www.youtube.com/watch?v=uvsp0zKhPV4
@@ -36,7 +39,6 @@ API_SET_YT = "http://localhost:8000/set_youtube"
 API_GET_YT = "http://localhost:8000/get_youtube/{thread_id}"
 API_GEN_TITLE = "http://localhost:8000/generate-title"
 API_NEW_THREAD = "http://localhost:8000/new-thread"
-API_NEW_USER_add = "http://localhost:8000/create-default-user"
 #API_REtrived_all_thread="http://localhost:8000//retrived-all-thread"
 #API_GET_THREAD_TITLE_DB="http://localhost:8000//get-thread-title"
 #API_SET_THREAD_TITLE="http://localhost:8000//save-thread-title"
@@ -48,6 +50,35 @@ API_THREAD_DETAILS = "http://localhost:8000/thread/{thread_id}/details"
 API_THREAD_DOCS = "http://localhost:8000/thread/{thread_id}/documents"
 
 API_THREAD_SOURCES = "http://localhost:8000/thread/{thread_id}/sources"
+
+# login apis 
+
+API_BASE = "http://localhost:8000"
+
+API_LOGIN = f"{API_BASE}/auth/login"
+API_SIGNUP = f"{API_BASE}/auth/signup"
+API_ME = f"{API_BASE}/auth/me"
+API_FORGOT_PASSWORD = f"{API_BASE}/auth/forgot-password"
+API_RESET_PASSWORD = f"{API_BASE}/auth/reset-password"
+
+
+
+
+if st.session_state["auth_page"] == "login":
+
+    login_page()
+
+    if st.button("Don't have an account? Sign up"):
+        st.session_state["auth_page"] = "signup"
+        st.rerun()
+
+else:
+
+    signup_page()
+
+    if st.button("Already have an account? Login"):
+        st.session_state["auth_page"] = "login"
+        st.rerun()
 
 
 
@@ -68,20 +99,35 @@ def call_api(user_input, thread_id):
 
 # ======================= Session Initialization ===================
 
+
+if "access_token" not in st.session_state:
+    st.session_state["access_token"] = None
+
+if "user" not in st.session_state:
+    st.session_state["user"] = None
+
 if "message_history" not in st.session_state:
     st.session_state["message_history"] = []
 
 if "youtube_url" not in st.session_state:
     st.session_state["youtube_url"] = None
 
-if "thread_id" not in st.session_state:
-    response = requests.post(API_NEW_THREAD)
-    st.session_state["thread_id"] = response.json()["thread_id"]
+if not st.session_state.get("access_token"):
+
+    # Show authentication UI
+    if st.session_state["auth_page"] == "login":
+        login_page()
+    else:
+        signup_page()
+
+    st.stop()
+
+#if "thread_id" not in st.session_state:
+ #   response = requests.post(API_NEW_THREAD)
+  #  st.session_state["thread_id"] = response.json()["thread_id"]
 
 
-if "user_id" not in st.session_state:
-    response=requests.post(API_NEW_USER_add)
-    st.session_state["user_id"]=response.json()["user_id"]
+
 
 
 if "pdf_uploaded" not in st.session_state:
@@ -98,7 +144,6 @@ if "uploaded_file_name" not in st.session_state:
 
 
 thread_key = st.session_state["thread_id"]
-user_id=st.session_state["user_id"]
 
 
 selected_thread = None
@@ -338,6 +383,25 @@ if selected_thread:
     st.rerun()
 
 
+
+st.sidebar.divider()
+
+if st.session_state.get("user"):
+
+    st.sidebar.write(
+        f"👤 {st.session_state['user']['email']}"
+    )
+
+    if st.sidebar.button("Logout"):
+
+        st.session_state["access_token"] = None
+        st.session_state["user"] = None
+        st.session_state["thread_id"] = None
+        st.session_state["message_history"] = []
+
+        st.rerun()
+
+
 # ============================ Download ============================
 
 st.divider()
@@ -350,3 +414,5 @@ st.download_button(
     file_name="chat_history.json",
     mime="application/json",
 )
+
+

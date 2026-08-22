@@ -1,3 +1,4 @@
+import streamlit as st
 def extract_ai_text(message):
     content = message.content
 
@@ -34,3 +35,14 @@ def is_valid_chunk(text: str) -> bool:
         return False
 
     return True
+
+
+def auth_headers():
+    token = st.session_state.get("access_token")
+
+    if not token:
+        return {}
+
+    return {
+        "Authorization": f"Bearer {token}"
+    }

@@ -18,4 +18,6 @@ fastapi_mail
 langchain-tavily
 langchain_google_genai 
 python-multipart
+passlib==1.7.4
 google-api-core
+bcrypt==4.3.0

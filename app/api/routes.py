@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File
+from fastapi import APIRouter, UploadFile, File,Depends
 import uuid
 from fastapi import Form
 from fastapi.responses import FileResponse
@@ -9,6 +9,7 @@ import sqlite3
 from fastapi import UploadFile, File, Form
 from fastapi.responses import FileResponse
 from app.services.youtube_ingest import ingest_youtube
+from app.auth.dependencies import get_current_user
 
 
 
@@ -26,7 +27,7 @@ from app.memory.sqlite_memory import  get_thread_title_db, save_thread_title
 from app.llm.title_generator import generate_chat_title
 from app.core.retriever import retrieve_all_threads
 from langgraph.checkpoint.sqlite import SqliteSaver
-
+from fastapi import HTTPException
 logger = get_logger(__name__)
 
 router = APIRouter()
@@ -41,10 +42,41 @@ checkpointer = SqliteSaver(conn=conn)
 
 # ========================= Chat Endpoint =========================
 @router.post("/chat")
-async def chat_endpoint(data: dict):
-
+async def chat_endpoint(
+    data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    user_id = current_user["user_id"]
     user_input = data["message"]
     thread_id = data["thread_id"]
+
+    # ==========================================
+    # Verify thread belongs to authenticated user
+    # ==========================================
+
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT thread_id
+        FROM threads
+        WHERE thread_id = ?
+          AND user_id = ?
+        """,
+        (thread_id, user_id)
+    )
+
+    thread = cursor.fetchone()
+
+    if thread is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Thread not found"
+        )
+
+    # ==========================================
+    # LangGraph configuration
+    # ==========================================
 
     CONFIG = {
         "configurable": {
@@ -52,6 +84,10 @@ async def chat_endpoint(data: dict):
         },
         "run_name": "chat_turn",
     }
+
+    # ==========================================
+    # Run chatbot
+    # ==========================================
 
     response = chatbot.invoke(
         {
@@ -62,7 +98,9 @@ async def chat_endpoint(data: dict):
         config=CONFIG,
     )
 
-    ai_response = extract_ai_text(response["messages"][-1])
+    ai_response = extract_ai_text(
+        response["messages"][-1]
+    )
 
     return {
         "thread_id": thread_id,
@@ -73,17 +111,39 @@ async def chat_endpoint(data: dict):
 # ========================= Threads =========================
 
 @router.get("/threads")
-def get_threads():
-    threads = retrieve_all_threads()
+def get_threads(
+    current_user: dict = Depends(get_current_user)
+):
+    user_id = current_user["user_id"]
+
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT
+            thread_id,
+            title,
+            created_at
+        FROM threads
+        WHERE user_id = ?
+        ORDER BY created_at DESC
+        """,
+        (user_id,)
+    )
+
+    rows = cursor.fetchall()
+
     result = []
 
-    for t in threads:
+    for row in rows:
         result.append({
-            "thread_id": t,
-            "title": get_thread_title_db(t)
+            "thread_id": row[0],
+            "title": row[1] or f"Chat {row[0][:6]}",
+            "created_at": row[2]
         })
 
     return result
+
 
 
 # GENErate thread title
@@ -133,10 +193,36 @@ def save_thread_title_api(thread_id: str, title: str):
 # ========================= New Thread =========================
 
 @router.post("/new-thread")
-def new_thread():
+def new_thread(
+    current_user: dict = Depends(get_current_user)
+):
+    user_id = current_user["user_id"]
+
     thread_id = str(uuid.uuid4())
-   # save_thread_title(thread_id, "New Chat")
-    return {"thread_id": thread_id}
+
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        INSERT INTO threads (
+            thread_id,
+            user_id,
+            title
+        )
+        VALUES (?, ?, ?)
+        """,
+        (
+            thread_id,
+            user_id,
+            "New Chat"
+        )
+    )
+
+    conn.commit()
+
+    return {
+        "thread_id": thread_id
+    }
 
 
 # ========================= Title Generation =========================
@@ -154,182 +240,542 @@ def generate_title(data: dict):
 
 
 @router.post("/set_youtube")
-def set_youtube(data: dict):
+def set_youtube(
+    data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    user_id = current_user["user_id"]
+
     thread_id = data["thread_id"]
     youtube_url = data["youtube_url"]
+
+    # ==========================================
+    # Verify thread ownership
+    # ==========================================
+
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT thread_id
+        FROM threads
+        WHERE thread_id = ?
+          AND user_id = ?
+        """,
+        (thread_id, user_id)
+    )
+
+    thread = cursor.fetchone()
+
+    if thread is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Thread not found"
+        )
+
+    # ==========================================
+    # Extract YouTube video ID
+    # ==========================================
 
     from app.utils.hash_utils import hash_string
 
     video_id = extract_video_id(youtube_url)
+
+    if not video_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid YouTube URL"
+        )
+
     doc_hash = hash_string(video_id)
 
-    cursor = conn.cursor()
+    # ==========================================
+    # Check if document already exists
+    # ==========================================
 
-    # 🔍 Check existing
-    cursor.execute("SELECT doc_id FROM documents WHERE content_hash=?", (doc_hash,))
+    cursor.execute(
+        """
+        SELECT doc_id, vectorstore_path
+        FROM documents
+        WHERE content_hash = ?
+        """,
+        (doc_hash,)
+    )
+
     row = cursor.fetchone()
 
     if row:
+
         doc_id = row[0]
-        print("....Video already parsent in vertor store ...")
-        cursor.execute("""
-        INSERT OR IGNORE INTO thread_documents (thread_id, doc_id)
-        VALUES (?, ?)
-        """,
-        (thread_id, doc_id))
+
+        # ======================================
+        # Existing document
+        # ======================================
+
+        cursor.execute(
+            """
+            INSERT  INTO thread_documents (
+                thread_id,
+                doc_id
+            )
+            VALUES (?, ?)
+            """,
+            (thread_id, doc_id)
+        )
+
         conn.commit()
+
         clear_thread_cache(thread_id)
 
-        return {"status": "ok"}
-        
-    else:
-        import uuid
-        doc_id = str(uuid.uuid4())
+        return {
+            "status": "reused",
+            "doc_id": doc_id
+        }
 
-        # 🔥 Only fetch + embed ONCE
-        vectorstore_path = ingest_youtube(video_id, doc_id)
+    # ==========================================
+    # New YouTube document
+    # ==========================================
 
-        cursor.execute("""
-        INSERT INTO documents (doc_id, type, content_hash, source, vectorstore_path)
-        VALUES (?, ?, ?, ?, ?)
-        """, (doc_id, "youtube", doc_hash, video_id, vectorstore_path))
+    doc_id = str(uuid.uuid4())
 
-    # 🔗 Link to thread
-    cursor.execute("""
-    INSERT OR IGNORE INTO thread_documents (thread_id, doc_id)
-    VALUES (?, ?)
-    """, (thread_id, doc_id))
+    vectorstore_path = ingest_youtube(
+        video_id,
+        doc_id
+    )
+
+    # ==========================================
+    # Save document with OWNER
+    # ==========================================
+
+    cursor.execute(
+        """
+        INSERT INTO documents (
+            doc_id,
+            user_id,
+            type,
+            content_hash,
+            source,
+            vectorstore_path
+        )
+        VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        (
+            doc_id,
+            user_id,
+            "youtube",
+            doc_hash,
+            video_id,
+            vectorstore_path
+        )
+    )
+
+    # ==========================================
+    # Link document to thread
+    # ==========================================
+
+    cursor.execute(
+        """
+        INSERT INTO thread_documents (
+            thread_id,
+            doc_id
+        )
+        VALUES (?, ?)
+        """,
+        (thread_id, doc_id)
+    )
 
     conn.commit()
+
     clear_thread_cache(thread_id)
 
-    return {"status": "ok"}
+    return {
+        "status": "ok",
+        "doc_id": doc_id
+    }
+
 
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
 UPLOAD_DIR = os.path.join(BASE_DIR, "uploaded_pdfs")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-
-
+# upload pdf endpoint
 @router.post("/upload-pdf")
 async def upload_pdf(
     file: UploadFile = File(...),
-    thread_id: str = Form(...)
+    thread_id: str = Form(...),
+    current_user: dict = Depends(get_current_user)
 ):
-    content = await file.read()
-
-    from app.utils.hash_utils import hash_bytes
-    doc_hash = hash_bytes(content)
+    user_id = current_user["user_id"]
 
     cursor = conn.cursor()
 
-    # 🔍 Check if document already exists
-    cursor.execute("SELECT doc_id, vectorstore_path FROM documents WHERE content_hash=?", (doc_hash,))
-    row = cursor.fetchone()
+    # ============================================================
+    # 1. Verify thread belongs to authenticated user
+    # ============================================================
 
-    if row:
-        doc_id = row[0]
+    cursor.execute(
+        """
+        SELECT thread_id
+        FROM threads
+        WHERE thread_id = ?
+          AND user_id = ?
+        """,
+        (thread_id, user_id)
+    )
 
-        # 🔗 Link to thread (NO RE-EMBEDDING)
-        cursor.execute("""
-        INSERT OR IGNORE INTO thread_documents (thread_id, doc_id)
-        VALUES (?, ?)
-        """, (thread_id, doc_id))
+    if cursor.fetchone() is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Thread not found"
+        )
+
+    # ============================================================
+    # 2. Read PDF
+    # ============================================================
+
+    content = await file.read()
+
+    from app.utils.hash_utils import hash_bytes
+
+    doc_hash = hash_bytes(content)
+
+    # ============================================================
+    # 3. Check whether THIS USER already has this document
+    # ============================================================
+
+    cursor.execute(
+        """
+        SELECT
+            doc_id,
+            vectorstore_path,
+            source
+        FROM documents
+        WHERE content_hash = ?
+          AND user_id = ?
+        """,
+        (
+            doc_hash,
+            user_id
+        )
+    )
+
+    user_document = cursor.fetchone()
+
+    # ============================================================
+    # CASE 1:
+    # Same user already owns this document
+    # ============================================================
+
+    if user_document:
+
+        doc_id = user_document[0]
+
+        cursor.execute(
+            """
+            INSERT INTO thread_documents
+            (
+                thread_id,
+                doc_id
+            )
+            VALUES (?, ?)
+            """,
+            (
+                thread_id,
+                doc_id
+            )
+        )
 
         conn.commit()
+
         clear_thread_cache(thread_id)
 
-        return {"status": "reused", "doc_id": doc_id}
+        return {
+            "status": "reused",
+            "doc_id": doc_id,
+            "message": "Document already exists for this user and was linked to the thread."
+        }
 
-    # 🆕 New document
-    import uuid
+    # ============================================================
+    # 4. Check whether the physical document already exists
+    #    for ANOTHER user
+    # ============================================================
+
+    cursor.execute(
+        """
+        SELECT
+            doc_id,
+            source,
+            vectorstore_path
+        FROM documents
+        WHERE content_hash = ?
+        LIMIT 1
+        """,
+        (doc_hash,)
+    )
+
+    existing_document = cursor.fetchone()
+
+    # ============================================================
+    # CASE 2:
+    # Same PDF exists for another user
+    #
+    # Reuse physical PDF + vectorstore,
+    # but create a NEW documents row for this user.
+    # ============================================================
+
+    if existing_document:
+
+        existing_doc_id = existing_document[0]
+        file_path = existing_document[1]
+        vectorstore_path = existing_document[2]
+
+        # New document record for current user
+        doc_id = str(uuid.uuid4())
+
+        cursor.execute(
+            """
+            INSERT INTO documents (
+                doc_id,
+                user_id,
+                type,
+                content_hash,
+                source,
+                vectorstore_path
+            )
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                doc_id,
+                user_id,
+                "pdf",
+                doc_hash,
+                file_path,
+                vectorstore_path
+            )
+        )
+
+        # Link user's thread to user's document record
+        cursor.execute(
+            """
+            INSERT INTO thread_documents (
+                thread_id,
+                doc_id
+            )
+            VALUES (?, ?)
+            """,
+            (
+                thread_id,
+                doc_id
+            )
+        )
+
+        conn.commit()
+
+        clear_thread_cache(thread_id)
+
+        return {
+            "status": "reused_physical_file",
+            "doc_id": doc_id,
+            "message": "Existing PDF/vectorstore reused and linked to this user."
+        }
+
+    # ============================================================
+    # CASE 3:
+    # Completely new document
+    # ============================================================
+
     doc_id = str(uuid.uuid4())
 
-    file_path = os.path.join("data/uploads_pdfs/", f"{doc_hash}.pdf")
+    file_path = os.path.join(
+        "data/uploads_pdfs",
+        f"{doc_hash}.pdf"
+    )
+
+    # ============================================================
+    # Save physical PDF
+    # ============================================================
 
     with open(file_path, "wb") as f:
         f.write(content)
-        
 
-    # 🔥 INGEST ONLY ONCE
+    # ============================================================
+    # Ingest / create vectorstore
+    # ============================================================
+
     vectorstore_path = ingest_pdf(
-    file_bytes=content,
-    filename=file.filename,
-    doc_id=doc_id
-)
+        file_bytes=content,
+        filename=file.filename,
+        doc_id=doc_id
+    )
 
-    cursor.execute("""
-    INSERT INTO documents (doc_id, type, content_hash, source, vectorstore_path)
-    VALUES (?, ?, ?, ?, ?)
-    """, (doc_id, "pdf", doc_hash, file_path, vectorstore_path))
+    # ============================================================
+    # Save document metadata
+    # ============================================================
 
-    cursor.execute("""
-    INSERT INTO thread_documents (thread_id, doc_id)
-    VALUES (?, ?)
-    """, (thread_id, doc_id))
+    cursor.execute(
+        """
+        INSERT INTO documents (
+            doc_id,
+            user_id,
+            type,
+            content_hash,
+            source,
+            vectorstore_path
+        )
+        VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        (
+            doc_id,
+            user_id,
+            "pdf",
+            doc_hash,
+            file_path,
+            vectorstore_path
+        )
+    )
+
+    # ============================================================
+    # Link document to thread
+    # ============================================================
+
+    cursor.execute(
+        """
+        INSERT INTO thread_documents (
+            thread_id,
+            doc_id
+        )
+        VALUES (?, ?)
+        """,
+        (
+            thread_id,
+            doc_id
+        )
+    )
 
     conn.commit()
 
-    return {"status": "new", "doc_id": doc_id}
+    clear_thread_cache(thread_id)
 
+    return {
+        "status": "new",
+        "doc_id": doc_id
+    }
 
-
+# docsument 
 
 
 
 @router.get("/thread/{thread_id}/documents")
-def get_thread_documents(thread_id: str):
+def get_thread_documents(
+    thread_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    user_id = current_user["user_id"]
 
     cursor = conn.cursor()
 
-    cursor.execute("""
-    SELECT
-        doc_id,
-        type,
-        source,
-        created_at
-    FROM documents
-    JOIN thread_documents USING(doc_id)
-    WHERE thread_id=?
-    ORDER BY created_at DESC
-    """, (thread_id,))
+    # ==========================================
+    # Verify thread ownership
+    # ==========================================
+
+    cursor.execute(
+        """
+        SELECT thread_id
+        FROM threads
+        WHERE thread_id = ?
+          AND user_id = ?
+        """,
+        (thread_id, user_id)
+    )
+
+    thread = cursor.fetchone()
+
+    if thread is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Thread not found"
+        )
+
+    # ==========================================
+    # Get documents
+    # ==========================================
+
+    cursor.execute(
+        """
+        SELECT
+            d.doc_id,
+            d.type,
+            d.source,
+            d.created_at
+        FROM documents d
+        JOIN thread_documents td
+            ON d.doc_id = td.doc_id
+        WHERE td.thread_id = ?
+          AND d.user_id = ?
+        ORDER BY d.created_at DESC
+        """,
+        (thread_id, user_id)
+    )
 
     rows = cursor.fetchall()
 
     documents = []
 
     for row in rows:
-        documents.append(
-            {
-                "doc_id": row[0],
-                "type": row[1],
-                "source": row[2],
-                "created_at": row[3]
-            }
-        )
+        documents.append({
+            "doc_id": row[0],
+            "type": row[1],
+            "source": row[2],
+            "created_at": row[3]
+        })
 
     return {
         "thread_id": thread_id,
         "documents": documents
     }
 
-
-
+# detail ............
 
 
 @router.get("/thread/{thread_id}/details")
-def get_thread_details(thread_id: str):
+def get_thread_details(
+    thread_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    user_id = current_user["user_id"]
 
-    # -------------------------
-    # title
-    # -------------------------
+    cursor = conn.cursor()
 
-    title = get_thread_title_db(thread_id)
+    # ==========================================
+    # Verify thread belongs to authenticated user
+    # ==========================================
 
-    # -------------------------
-    # messages
-    # -------------------------
+    cursor.execute(
+        """
+        SELECT
+            thread_id,
+            title
+        FROM threads
+        WHERE thread_id = ?
+          AND user_id = ?
+        """,
+        (thread_id, user_id)
+    )
+
+    thread = cursor.fetchone()
+
+    if thread is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Thread not found"
+        )
+
+    title = thread[1] or f"Chat {thread_id[:6]}"
+
+    # ==========================================
+    # Get LangGraph messages
+    # ==========================================
 
     state = chatbot.get_state(
         config={
@@ -358,21 +804,24 @@ def get_thread_details(thread_id: str):
             }
         )
 
-    # -------------------------
-    # documents
-    # -------------------------
+    # ==========================================
+    # Get documents belonging to this thread
+    # ==========================================
 
-    cursor = conn.cursor()
-
-    cursor.execute("""
-    SELECT
-        doc_id,
-        type,
-        source
-    FROM documents
-    JOIN thread_documents USING(doc_id)
-    WHERE thread_id=?
-    """, (thread_id,))
+    cursor.execute(
+        """
+        SELECT
+            d.doc_id,
+            d.type,
+            d.source
+        FROM documents d
+        JOIN thread_documents td
+            ON d.doc_id = td.doc_id
+        WHERE td.thread_id = ?
+          AND d.user_id = ?
+        """,
+        (thread_id, user_id)
+    )
 
     rows = cursor.fetchall()
 
@@ -380,13 +829,15 @@ def get_thread_details(thread_id: str):
 
     for row in rows:
 
-        doc = {
+        documents.append({
             "doc_id": row[0],
             "type": row[1],
             "source": row[2]
-        }
+        })
 
-        documents.append(doc)
+    # ==========================================
+    # Response
+    # ==========================================
 
     return {
         "thread_id": thread_id,
@@ -395,10 +846,42 @@ def get_thread_details(thread_id: str):
         "documents": documents
     }
 
-
+# get source ...........
 
 @router.get("/thread/{thread_id}/sources")
-def get_thread_sources(thread_id: str):
+def get_thread_sources(
+    thread_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    user_id = current_user["user_id"]
+
+    cursor = conn.cursor()
+
+    # ==========================================
+    # Verify thread ownership
+    # ==========================================
+
+    cursor.execute(
+        """
+        SELECT thread_id
+        FROM threads
+        WHERE thread_id = ?
+          AND user_id = ?
+        """,
+        (thread_id, user_id)
+    )
+
+    thread = cursor.fetchone()
+
+    if thread is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Thread not found"
+        )
+
+    # ==========================================
+    # Get sources
+    # ==========================================
 
     return thread_document_metadata(thread_id)
 
@@ -408,98 +891,155 @@ def get_thread_sources(thread_id: str):
 
 
 #''''''''''''''''''
-
 @router.get("/get_pdf/{thread_id}")
-def get_pdf(thread_id: str):
+def get_pdf(
+    thread_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    user_id = current_user["user_id"]
+
     cursor = conn.cursor()
 
-    cursor.execute("""
-    SELECT source FROM documents
-    JOIN thread_documents USING(doc_id)
-    WHERE thread_id=? AND type='pdf'
-    """, (thread_id,))
+    # ==========================================
+    # Verify thread ownership
+    # ==========================================
 
+    cursor.execute(
+        """
+        SELECT thread_id
+        FROM threads
+        WHERE thread_id = ?
+          AND user_id = ?
+        """,
+        (thread_id, user_id)
+    )
 
-    rows = cursor.fetchall()
+    thread = cursor.fetchone()
 
-    if rows:
-      file_path = rows[0][0]
-      print("here is pdf that system get path and not show ",file_path)
+    if thread is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Thread not found"
+        )
 
-      if os.path.exists(file_path):
-         return FileResponse(
-             file_path,
-             media_type="application/pdf"
-         )
+    # ==========================================
+    # Get PDF belonging to this thread
+    # ==========================================
 
-    return {"error": "No PDF found"}
+    cursor.execute(
+        """
+        SELECT d.source
+        FROM documents d
+        JOIN thread_documents td
+            ON d.doc_id = td.doc_id
+        WHERE td.thread_id = ?
+          AND d.user_id = ?
+          AND d.type = 'pdf'
+        ORDER BY d.created_at DESC
+        """,
+        (thread_id, user_id)
+    )
 
+    row = cursor.fetchone()
 
+    if row is None:
+        raise HTTPException(
+            status_code=404,
+            detail="No PDF found for this thread"
+        )
+
+    file_path = row[0]
+
+    # ==========================================
+    # Verify physical file exists
+    # ==========================================
+
+    if not os.path.exists(file_path):
+        raise HTTPException(
+            status_code=404,
+            detail="PDF file not found"
+        )
+
+    # ==========================================
+    # Return PDF
+    # ==========================================
+
+    return FileResponse(
+        file_path,
+        media_type="application/pdf"
+    )
 
 
 
 @router.get("/get_youtube/{thread_id}")
-def get_youtube(thread_id: str):
+def get_youtube(
+    thread_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    user_id = current_user["user_id"]
+
     cursor = conn.cursor()
 
-    cursor.execute("""
-    SELECT source FROM documents
-    JOIN thread_documents USING(doc_id)
-    WHERE thread_id=? AND type='youtube'
-    """, (thread_id,))
+    # ==========================================
+    # Verify thread ownership
+    # ==========================================
 
-    row = cursor.fetchall()
+    cursor.execute(
+        """
+        SELECT thread_id
+        FROM threads
+        WHERE thread_id = ?
+          AND user_id = ?
+        """,
+        (thread_id, user_id)
+    )
 
+    thread = cursor.fetchone()
 
-    if row:
-        videos = [
-    f"https://www.youtube.com/watch?v={r[0]}"
-    for r in row
-]
+    if thread is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Thread not found"
+        )
 
-        return {"youtube_url": videos}
+    # ==========================================
+    # Get YouTube videos belonging to this thread
+    # ==========================================
 
-    return {"youtube_url": None}
+    cursor.execute(
+        """
+        SELECT d.source
+        FROM documents d
+        JOIN thread_documents td
+            ON d.doc_id = td.doc_id
+        WHERE td.thread_id = ?
+          AND d.user_id = ?
+          AND d.type = 'youtube'
+        ORDER BY d.created_at DESC
+        """,
+        (thread_id, user_id)
+    )
 
+    rows = cursor.fetchall()
 
-@router.post("/create-default-user")
-def get_or_create_default_user():
-    try:
-      # 1. Create the cursor without a 'with' block
-      cursor = conn.cursor()
-    
-      # Try to find the default test user
-      cursor.execute("SELECT user_id FROM users WHERE email = 'testuser@local.com'")
-      row = cursor.fetchone()
-    
-      if row:
-          cursor.close() # Clean up the cursor
-          return {"user_id": row[0]} # Return existing user_id
-    
-      created_at = datetime.now()
-    
-      # 2. If missing, create the default user (Fixed syntax and tuple placement)
-      cursor.execute("""
-          INSERT INTO users (email, password_hash, is_verified, created_at) 
-          VALUES (?, ?, ?, ?)
-      """, ('testuser@local.com', 'no_auth_placeholder', 1, created_at))
-    
-      conn.commit()
-    
-      # 3. Return the newly generated ID
-      user_id = cursor.lastrowid
-      print("here is tha user id get as dummy email result ,user_id: ", user_id)
-    
-      cursor.close() # Clean up the cursor
-      return {"user_id": user_id}
-        
-    except Exception as e:
-      conn.rollback()
-      logger.error(f"Failed to manage default user: {str(e)}")
-      return {"user_id": 1} # Fallback dict structure to match successful returns
+    if not rows:
+        return {
+            "youtube_url": None
+        }
 
+    # ==========================================
+    # Convert video IDs to YouTube URLs
+    # ==========================================
 
+    videos = [
+        f"https://www.youtube.com/watch?v={row[0]}"
+        for row in rows
+    ]
 
+    return {
+        "thread_id": thread_id,
+        "youtube_url": videos
+    }
 
 
 
